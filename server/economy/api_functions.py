@@ -101,7 +101,7 @@ def get_neighborhoods_list() -> List[Dict]:
     ]
 
 
-def create_grid_squares(rows: int = 5, cols: int = 5) -> List[Dict]:
+def create_grid_squares(rows: int = 20, cols: int = 20) -> List[Dict]:
     """
     Create a grid of squares over LA County area that vary in size to fit the perimeter
     
@@ -163,7 +163,7 @@ def create_grid_squares(rows: int = 5, cols: int = 5) -> List[Dict]:
     return squares
 
 
-def save_income_matrix_to_json(rows: int = 5, cols: int = 5, year: int = 2023, output_dir: str = "./JSON") -> None:
+def save_income_matrix_to_json(rows: int = 20, cols: int = 20, year: int = 2023, output_dir: str = "./JSON") -> None:
     """
     Generate income matrix and save as JSON file
     
@@ -190,7 +190,11 @@ def save_income_matrix_to_json(rows: int = 5, cols: int = 5, year: int = 2023, o
     square_data = []
     for square in grid_squares:
         # Create realistic income variation per square based on position
-        variation_factor = 0.7 + ((square['row'] + square['col']) % 5) * 0.08  # 0.7 to 1.06
+        # Use a more complex formula to avoid repetitive patterns
+        row = square['row']
+        col = square['col']
+        # Combine row and col with prime numbers to reduce periodicity
+        variation_factor = 0.6 + ((row * 7 + col * 13) % 37) * 0.012  # More varied range
         square_mean = county_mean * variation_factor
         
         square_data.append({
@@ -246,7 +250,7 @@ def save_income_matrix_to_json(rows: int = 5, cols: int = 5, year: int = 2023, o
     print(f"✅ JSON saved to: {output_file}")
 
 
-def print_income_per_grid_square(rows: int = 5, cols: int = 5, year: int = 2023) -> None:
+def print_income_per_grid_square(rows: int = 20, cols: int = 20, year: int = 2023) -> None:
     """
     Print mean income for each grid square in Los Angeles as a matrix
     Normalized between 0 and 1 based on min/max values
@@ -270,7 +274,11 @@ def print_income_per_grid_square(rows: int = 5, cols: int = 5, year: int = 2023)
     square_data = []
     for square in grid_squares:
         # Create realistic income variation per square based on position
-        variation_factor = 0.7 + ((square['row'] + square['col']) % 5) * 0.08  # 0.7 to 1.06
+        # Use a more complex formula to avoid repetitive patterns
+        row = square['row']
+        col = square['col']
+        # Combine row and col with prime numbers to reduce periodicity
+        variation_factor = 0.6 + ((row * 7 + col * 13) % 37) * 0.012  # More varied range
         square_mean = county_mean * variation_factor
         
         square_data.append({
@@ -398,16 +406,10 @@ if __name__ == "__main__":
     print(f"  West:  {BOUND_W}°")
     print()
     
-    try:
-        rows = 20
-        cols = 20 
+    rows = 20
+    cols = 20 
         
-        if rows < 1 or cols < 1:
-            print("❌ Invalid input. Using default 5x5 grid.")
-            rows, cols = 5, 5
-    except ValueError:
-        print("❌ Invalid input. Using default 5x5 grid.")
-        rows, cols = 5, 5
+
     
     print(f"\n✅ Creating {rows}x{cols} grid...")
     
