@@ -2,6 +2,8 @@ import requests
 import json
 import time
 from datetime import datetime, timedelta
+from typing import List, Dict, Any
+from pathlib import Path
 
 # --- Configuration ---
 # Base URL for the LA City Data Portal (Socrata Open Data API)
@@ -22,7 +24,7 @@ BOUND_N = 34.3344   # North Latitude
 BOUND_S = 33.8624   # South Latitude
 
 # --- API Interaction Function ---
-
+# Fetch data from the LA City Open Data Portal using SODA API
 def fetch_la_data(resource_id: str, params: dict, max_retries: int = 3):
     """
     Fetches data from the LA City Open Data Portal using the SODA API.
@@ -68,6 +70,7 @@ def fetch_la_data(resource_id: str, params: dict, max_retries: int = 3):
                 return None
     return None
 
+# --- Crime Data Retrieval with Pagination and Filtering ---
 def _get_filters(include_date_range: bool = True, bounds: dict = None):
     """
     Internal helper to generate a list of SOQL WHERE clause filters.
@@ -105,7 +108,7 @@ def _get_filters(include_date_range: bool = True, bounds: dict = None):
     # Combine all filters with 'AND'
     return " AND ".join(filters)
 
-
+# --- Main Function to Get Paginated Crimes ---
 def get_paginated_crimes(max_records: int = 10000, bounds: dict = None):
     """
     Fetches a large number of crime records using pagination, optionally filtering
@@ -173,6 +176,227 @@ def get_paginated_crimes(max_records: int = 10000, bounds: dict = None):
     # If the bounding box is small, 10,000 records might be enough to cover all relevant data.
     data_geo_filtered = get_paginated_crimes(max_records=100, bounds=user_bounds) 
 
-    
+# Print the number of records fetched per parcel
+def crime_counts_by_parcels(nx: int, ny: int, max_records_per_parcel: int = 10000) -> List[Dict[str, Any]]:
+	"""
+	Divide the LA bounding box into an `nx` by `ny` grid and count crimes
+	in each parcel over the last year.
+
+	Args:
+		nx (int): Number of parcels along the longitude (x) axis.
+		ny (int): Number of parcels along the latitude (y) axis.
+		max_records_per_parcel (int): Maximum records to fetch per parcel
+			(passed to `get_paginated_crimes`). If a parcel contains more
+			crimes than this limit the returned count will be limited.
+
+	Returns:
+		List[Dict]: A list of parcel dictionaries. Each dictionary contains:
+			- `i`, `j`: grid indices (0-based)
+			- `bounds`: dict with `N`, `S`, `E`, `W` keys
+			- `center`: (lat, lon) tuple of parcel center
+			- `count`: number of crime records fetched for that parcel
+			- `records`: (optional) the raw records list (only included when
+			  `max_records_per_parcel` is small; keep in mind memory usage).
+	"""
+
+	if nx <= 0 or ny <= 0:
+		raise ValueError("nx and ny must be positive integers")
+
+	lon_span = BOUND_E - BOUND_W
+	lat_span = BOUND_N - BOUND_S
+
+	lon_step = lon_span / nx
+	lat_step = lat_span / ny
+
+	results: List[Dict[str, Any]] = []
+
+	# iterate columns (x) then rows (y). j runs south->north (0 = south)
+	for i in range(nx):
+		for j in range(ny):
+			w = BOUND_W + i * lon_step
+			e = w + lon_step
+			s = BOUND_S + j * lat_step
+			n = s + lat_step
+
+			bounds = {"N": n, "S": s, "E": e, "W": w}
+
+			# Fetch crimes for this parcel; get_paginated_crimes already
+			# filters to the last year by default.
+			records = get_paginated_crimes(max_records=max_records_per_parcel, bounds=bounds)
+
+			count = len(records) if records else 0
+
+			center_lat = (n + s) / 2.0
+			center_lon = (e + w) / 2.0
+
+			results.append(
+				{
+					"i": i,
+					"j": j,
+					"bounds": bounds,
+					"center": (center_lat, center_lon),
+					"count": count,
+					"records": records,
+				}
+			)
+
+	return results
+
+# Function to normalize the crimes on each parcel
+# Normalize a 2D crime matrix so that its maximum value becomes `target_max`.
+def normalize_matrix(matrix: List[List[float]], target_max: float = 1.0) -> List[List[float]]:
+	"""
+	Normalize values in a 2D matrix such that the largest element becomes
+	`target_max` and all other elements are scaled proportionally.
+
+	Args:
+		matrix: 2D list of numeric values (rows x cols). Rows may be empty.
+		target_max: desired maximum after normalization (default 1.0).
+
+	Returns:
+		A new 2D list with normalized float values. Original matrix is not modified.
+
+	Behavior:
+		- If the matrix is empty or all-zero, the function returns a matrix
+		  of the same shape filled with zeros.
+		- If the maximum value is already equal to `target_max`, a copy
+		  of the matrix (as floats) is returned.
+	"""
+
+	# Defensive: handle None
+	if matrix is None:
+		return []
+
+	# Compute max value across the matrix
+	max_val = None
+	for row in matrix:
+		for v in row:
+			# treat non-numeric as zero via float conversion exception handling
+			try:
+				fv = float(v)
+			except Exception:
+				fv = 0.0
+			if max_val is None or fv > max_val:
+				max_val = fv
+
+	if max_val is None:
+		# matrix had no elements
+		return [list(map(float, row)) for row in matrix]
+
+	if max_val == 0:
+		# avoid division by zero; return zero matrix of same shape
+		return [[0.0 for _ in row] for row in matrix]
+
+	scale = float(target_max) / float(max_val)
+
+	normalized = []
+	for row in matrix:
+		normalized.append([float(v) * scale for v in row])
+
+	return normalized
+
+# Function to build the crime matrix JSON
+def crime_matrix_json(nx: int, ny: int, max_records_per_parcel: int = 10000, as_json: bool = False) -> Any:
+	"""
+	Return a JSON-serializable structure describing crime counts across an nx-by-ny grid.
+
+	The returned value is a list with a single object matching the requested schema:
+	[{
+		"Aspect": "Crime",
+		"CrimeMatrix": [[...]],          # rows ordered from North to South
+		"Norigin": <north_latitude>,
+		"WOrigin": <west_longitude>,
+		"VerticalStep": <latitude_step>,
+		"HorizontalStep": <longitude_step>,
+	}]
+
+	Args:
+		nx, ny: grid dimensions
+		max_records_per_parcel: forwarded to `crime_counts_by_parcels`
+		as_json: if True, returns a JSON string instead of Python objects
+	"""
+
+	if nx <= 0 or ny <= 0:
+		raise ValueError("nx and ny must be positive integers")
+
+	parcels = crime_counts_by_parcels(nx, ny, max_records_per_parcel=max_records_per_parcel)
+
+	# Build matrix with rows ordered from North to South (row 0 = north)
+	matrix = [[0 for _ in range(nx)] for _ in range(ny)]
+
+	for p in parcels:
+		# each parcel is a dict with keys 'i','j','count'
+		row = (ny - 1) - int(p["j"])
+		col = int(p["i"])
+		matrix[row][col] = int(p["count"]) if p["count"] is not None else 0
+
+	# Normalize numeric matrix so its max becomes 1.0
+	normalized_matrix = normalize_matrix(matrix, target_max=1.0)
+
+	lon_span = BOUND_E - BOUND_W
+	lat_span = BOUND_N - BOUND_S
+
+	horizontal_step = lon_span / nx
+	vertical_step = lat_span / ny
+
+	obj = [
+		{
+			"Aspect": "Crime",
+			"CrimeMatrix": normalized_matrix,
+			"Norigin": BOUND_N,
+			"WOrigin": BOUND_W,
+			"VerticalStep": vertical_step,
+			"HorizontalStep": horizontal_step,
+		}
+	]
+
+	if as_json:
+		return json.dumps(obj)
+	return obj
+
+# Function to save the crime matrix JSON to a file
+def save_crime_matrix_json(
+	nx: int,
+	ny: int,
+	max_records_per_parcel: int = 10000,
+	json_dir: str | Path = None,
+	filename: str | None = None,
+) -> Path:
+	"""
+	Generate the crime matrix and save it as a pretty-printed JSON file inside
+	a `jsons` folder located next to this module by default.
+
+	Args:
+		nx, ny: grid dimensions
+		max_records_per_parcel: forwarded to `crime_matrix_json`
+		json_dir: optional directory to write to. Defaults to `server/city_stats/jsons`.
+		filename: optional filename override. If omitted a timestamped name is used.
+
+	Returns:
+		Path to the saved JSON file.
+	"""
+
+	# Build the object (not a string) so we write a nicely indented file
+	obj = crime_matrix_json(nx, ny, max_records_per_parcel=max_records_per_parcel, as_json=False)
+
+	# Default folder: sibling `jsons` directory
+	module_dir = Path(__file__).parent
+	default_dir = module_dir / "jsons"
+	out_dir = Path(json_dir) if json_dir is not None else default_dir
+	out_dir.mkdir(parents=True, exist_ok=True)
+
+	if filename:
+		out_path = out_dir / filename
+	else:
+		ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+		out_path = out_dir / f"crime_matrix_{nx}x{ny}_{ts}.json"
+
+	# Write pretty JSON
+	with out_path.open("w", encoding="utf-8") as fh:
+		json.dump(obj, fh, indent=2, ensure_ascii=False)
+
+	return out_path
+
+
     
     
