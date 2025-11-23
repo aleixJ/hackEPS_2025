@@ -312,8 +312,8 @@ export default {
       this.$forceUpdate();
       
       try {
-        // Asegúrate de usar la URL correcta con http://
-        await axios.post('http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/update-vector', {
+        // Usar ruta relativa para que funcione con el proxy de Vite
+        await axios.post('/api/update-vector', {
           vector: this.preferenceVector
         });
         
@@ -522,11 +522,8 @@ export default {
     
     async loadHeatmap() {
       try {
-        // CAMBIAR ESTO:
-        // const response = await axios.get(`http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/heatmap?method=${this.calculationMethod}`);
-        
-        // POR ESTO (usar comillas invertidas correctamente):
-        const response = await axios.get(`http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/heatmap`, {
+        // Usar ruta relativa con proxy de Vite
+        const response = await axios.get('/api/heatmap', {
           params: {
             method: this.calculationMethod
           }
@@ -584,7 +581,7 @@ export default {
     async onSliderChange() {
       // Actualizar el vector en el backend
       try {
-        await axios.post('http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/update-vector', {
+        await axios.post('/api/update-vector', {
           vector: this.userVector
         });
         
@@ -1463,7 +1460,7 @@ export default {
     }).addTo(this.map);
 
     // Fetch OSM data from the backend
-    fetch('http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/osm-data')
+    fetch('/api/osm-data')
       .then(response => response.json())
       .then(data => {
         console.log('OSM data from server:', data);

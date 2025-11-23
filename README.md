@@ -1,142 +1,148 @@
-# Instruccions per usar el Mapa de Calor
+# Instrucciones para usar el Mapa de Calor
 
-## Descripció
+## Descripción
 
-El mapa de calor compara les preferències de l'usuari (generades per la IA) amb cada zona de Los Ángeles, mostrant visualment les àrees més adequades segons les seves necessitats.
+El mapa de calor compara las preferencias del usuario (generadas por la IA) con cada zona de Los Ángeles, mostrando visualmente las áreas más adecuadas según sus necesidades.
 
-## Com usar
+## Cómo usar
 
-### 1. Generar Vector de Preferències
+### 1. Generar Vector de Preferencias
 
-Al panel esquerre "AI Assistant":
+En el panel izquierdo "AI Assistant":
 
-1. Escriu una descripció de les teves necessitats (exemple: "Sóc estudiant, necessito una zona tranquil·la amb bon internet i a prop de universitats")
-2. Fes clic a "Generate"
-3. La IA generarà un vector de 11 valors que representa les teves preferències
+1. Escribe una descripción de tus necesidades (ejemplo: "Soy estudiante, necesito una zona tranquila con buen internet y cerca de universidades")
+2. Haz clic en "Generate"
+3. La IA generará un vector de 11 valores que representa tus preferencias
 
-### 2. Visualitzar el Mapa de Calor
+### 2. Visualizar el Mapa de Calor
 
-1. Després de generar el vector, el mapa de calor es carrega automàticament
-2. Al panel dret "Filtres", fes clic a "Mostrar Mapa de Calor"
-3. El mapa mostrarà colors que indiquen la coincidència:
-   - **Blau**: Baixa coincidència (30-40%)
-   - **Cian**: Coincidència baixa-mitjana (40-50%)
-   - **Verd**: Coincidència mitjana (50-60%)
-   - **Groc-Verd**: Bona coincidència (60-70%)
-   - **Groc**: Molt bona coincidència (70-80%)
-   - **Taronja**: Coincidència excel·lent (80-90%)
-   - **Vermell**: Coincidència perfecta (90-100%)
+1. Después de generar el vector, el mapa de calor se carga automáticamente
+2. En el panel derecho "Filtros", haz clic en "Mostrar Mapa de Calor"
+3. El mapa mostrará colores que indican la coincidencia:
+   - **Azul**: Baja coincidencia (30-40%)
+   - **Cyan**: Coincidencia baja-media (40-50%)
+   - **Verde**: Coincidencia media (50-60%)
+   - **Amarillo-Verde**: Buena coincidencia (60-70%)
+   - **Amarillo**: Muy buena coincidencia (70-80%)
+   - **Naranja**: Excelente coincidencia (80-90%)
+   - **Rojo**: Coincidencia perfecta (90-100%)
 
-### 3. Explorar Resultats
+### 3. Explorar Resultados
 
-- Fes clic en qualsevol àrea coloreada per veure el percentatge exacte de coincidència
-- Les zones que no es mostren tenen menys del 30% de coincidència
-- Pots activar/desactivar altres filtres per comparar
+- Haz clic en cualquier área coloreada para ver el porcentaje exacto de coincidencia
+- Las zonas que no se muestran tienen menos del 30% de coincidencia
+- Puedes activar/desactivar otros filtros para comparar
 
-## Interpretació del Vector de Preferències
+## Interpretación del Vector de Preferencias
 
-El vector té 11 components (índexs 0-10):
-0. **Income** - Preu/nivell econòmic
+El vector tiene 11 componentes (índices 0-10):
+0. **Income** - Precio/nivel económico
 
-1. **Crimes** - Seguretat (menor valor = més segur)
-2. **Connectivity** - Connectivitat digital/internet
-3. **Noise** - Contaminació acústica (major valor = menys soroll)
-4. **Walkability** - Caminabilitat/ciutat de 15 minuts
-5. **Accessibility** - Accessibilitat per a persones amb mobilitat reduïda
-6. **Wellbeing** - Benestar general/espais verds/pet-friendly
-7. **Mobility** - Transport públic/bici/mobilitat
-8. **Education** - Centres educatius propers
-9. **Community Vibe** - Ambient de la comunitat/comercios
-10. **Health** - Centres mèdics/salut
+1. **Crimes** - Seguridad (menor valor = más seguro)
+2. **Connectivity** - Conectividad digital/internet
+3. **Noise** - Contaminación acústica (mayor valor = menos ruido)
+4. **Walkability** - Caminabilidad/ciudad de 15 minutos
+5. **Accessibility** - Accesibilidad para personas con movilidad reducida
+6. **Wellbeing** - Bienestar general/espacios verdes/pet-friendly
+7. **Mobility** - Transporte público/bici/movilidad
+8. **Education** - Centros educativos cercanos
+9. **Community Vibe** - Ambiente de la comunidad/comercios
+10. **Health** - Centros médicos/salud
 
-## Mètodes de Càlcul
+## Métodos de Cálculo
 
-El sistema ofereix **5 mètodes diferents** per calcular la similitud entre les teves preferències i les zones de Los Ángeles. Pots canviar el mètode al desplegable "Mètode" ubicat a la cantonada inferior dreta del mapa.
+El sistema ofrece **5 métodos diferentes** para calcular la similitud entre tus preferencias y las zonas de Los Ángeles. Puedes cambiar el método en el desplegable "Método" ubicado en la esquina inferior derecha del mapa.
 
-### 1. 🎯 Coseno (Cosine Similarity) - **RECOMANAT**
-- **Descripció**: Mesura l'angle entre dos vectors, ignorant magnituds
-- **Avantatges**: Ràpid, estable i funciona bé per comparar patrons
-- **Ús ideal**: Cerques generals, casos on importa més el "patró" de preferències que els valors exactes
+### 1. 🎯 Coseno (Cosine Similarity) - **RECOMENDADO**
+
+- **Descripción**: Mide el ángulo entre dos vectores, ignorando magnitudes
+- **Ventajas**: Rápido, estable y funciona bien para comparar patrones
+- **Uso ideal**: Búsquedas generales, casos donde importa más el "patrón" de preferencias que los valores exactos
 - **Fórmula**: `similarity = dot(v1, v2) / (||v1|| * ||v2||)`
-- **Rang**: 0 (vectors perpendiculars) a 1 (vectors paral·lels)
+- **Rango**: 0 (vectores perpendiculares) a 1 (vectores paralelos)
 
 ### 2. 📊 Maximum Likelihood (ML)
-- **Descripció**: Basat en distribució gaussiana, assumeix que les dades segueixen una distribució normal
-- **Avantatges**: Penalitza més les diferències grans, dóna resultats més "suaus"
-- **Ús ideal**: Quan vols resultats més conservadors, penalitzant zones molt diferents
-- **Mètode**: Calcula distància euclidiana normalitzada i aplica transformació gaussiana (σ=0.3)
-- **Rang**: 0 (molt diferents) a 1 (idèntics)
+
+- **Descripción**: Basado en distribución gaussiana, asume que los datos siguen una distribución normal
+- **Ventajas**: Penaliza más las diferencias grandes, da resultados más "suaves"
+- **Uso ideal**: Cuando quieres resultados más conservadores, penalizando zonas muy diferentes
+- **Método**: Calcula distancia euclidiana normalizada y aplica transformación gaussiana (σ=0.3)
+- **Rango**: 0 (muy diferentes) a 1 (idénticos)
 
 ### 3. 📏 Manhattan Distance
-- **Descripció**: Suma de diferències absolutes en cada dimensió (distància L1)
-- **Avantatges**: Més sensible a diferències individuals en cada categoria
-- **Ús ideal**: Quan totes les dimensions són igualment importants
-- **Fórmula**: `distance = Σ|v1[i] - v2[i]|`, després `similarity = 1 - distance/11`
-- **Rang**: 0 (molt diferents) a 1 (idèntics)
 
-### 4. ⚖️ Weighted Euclidean (Ponderat)
-- **Descripció**: Distància euclidiana amb pesos personalitzats per dimensió
-- **Avantatges**: Prioritza les dimensions més importants (crimes, accessibility, health, income)
-- **Ús ideal**: Quan la seguretat, accessibilitat i salut són prioritàries
-- **Pesos aplicats**:
-  - 🔴 **Seguretat (Crimes)**: 1.5 (màxima prioritat)
-  - 🟡 **Accessibilitat**: 1.3 (alta prioritat)
-  - 🟡 **Income**: 1.2 (alta prioritat)
-  - 🟡 **Salut (Health)**: 1.2 (alta prioritat)
-  - 🟢 **Resta**: 0.8-1.1 (prioritat normal)
-- **Rang**: 0 (molt diferents) a 1 (idèntics)
+- **Descripción**: Suma de diferencias absolutas en cada dimensión (distancia L1)
+- **Ventajas**: Más sensible a diferencias individuales en cada categoría
+- **Uso ideal**: Cuando todas las dimensiones son igualmente importantes
+- **Fórmula**: `distance = Σ|v1[i] - v2[i]|`, luego `similarity = 1 - distance/11`
+- **Rango**: 0 (muy diferentes) a 1 (idénticos)
+
+### 4. ⚖️ Weighted Euclidean (Ponderado)
+
+- **Descripción**: Distancia euclidiana con pesos personalizados por dimensión
+- **Ventajas**: Prioriza las dimensiones más importantes (crimes, accessibility, health, income)
+- **Uso ideal**: Cuando la seguridad, accesibilidad y salud son prioritarias
+- **Pesos aplicados**:
+  - 🔴 **Seguridad (Crimes)**: 1.5 (máxima prioridad)
+  - 🟡 **Accessibilidad**: 1.3 (alta prioridad)
+  - 🟡 **Income**: 1.2 (alta prioridad)
+  - 🟡 **Salud (Health)**: 1.2 (alta prioridad)
+  - 🟢 **Resto**: 0.8-1.1 (prioridad normal)
+- **Rango**: 0 (muy diferentes) a 1 (idénticos)
 
 ### 5. 📈 Pearson Correlation
-- **Descripció**: Mesura correlació lineal entre vectors
-- **Avantatges**: Detecta patrons similars fins i tot amb escalas diferents
-- **Ús ideal**: Quan importa més la "tendència" que els valors absoluts
-- **Fórmula**: Coeficient de correlació de Pearson, normalitzat de [-1,1] a [0,1]
-- **Rang**: 0 (no correlacionats/oposats) a 1 (perfectament correlacionats)
 
-### Comparació Ràpida
+- **Descripción**: Mide correlación lineal entre vectores
+- **Ventajas**: Detecta patrones similares incluso con escalas diferentes
+- **Uso ideal**: Cuando importa más la "tendencia" que los valores absolutos
+- **Fórmula**: Coeficiente de correlación de Pearson, normalizado de [-1,1] a [0,1]
+- **Rango**: 0 (no correlacionados/opuestos) a 1 (perfectamente correlacionados)
 
-| Mètode | Velocitat | Precisió | Sensibilitat | Millor per |
-|--------|-----------|----------|--------------|-----------|
-| **Coseno** | ⚡⚡⚡ | ⭐⭐⭐ | Mitjana | Ús general |
-| **ML** | ⚡⚡ | ⭐⭐⭐⭐ | Alta | Resultats conservadors |
-| **Manhattan** | ⚡⚡⚡ | ⭐⭐⭐ | Alta | Balance dimensional |
-| **Weighted** | ⚡⚡ | ⭐⭐⭐⭐⭐ | Molt alta | Prioritzar seguretat/salut |
-| **Pearson** | ⚡⚡ | ⭐⭐⭐ | Baixa | Patrons similars |
+### Comparación Rápida
 
-### Quin mètode triar?
+| Método             | Velocidad | Precisión | Sensibilidad | Mejor para                |
+| ------------------- | --------- | ---------- | ------------ | ------------------------- |
+| **Coseno**    | ⚡⚡⚡    | ⭐⭐⭐     | Media        | Uso general               |
+| **ML**        | ⚡⚡      | ⭐⭐⭐⭐   | Alta         | Resultados conservadores  |
+| **Manhattan** | ⚡⚡⚡    | ⭐⭐⭐     | Alta         | Balance dimensional       |
+| **Weighted**  | ⚡⚡      | ⭐⭐⭐⭐⭐ | Muy alta     | Priorizar seguridad/salud |
+| **Pearson**   | ⚡⚡      | ⭐⭐⭐     | Baja         | Patrones similares        |
 
-- **Família amb nens** → ⚖️ Weighted (prioritza seguretat i accessibilitat)
-- **Estudiant/Jove professional** → 🎯 Coseno (balance general)
-- **Cerca conservadora** → 📊 ML (resultats més estrictes)
-- **Totes les categories igual d'importants** → 📏 Manhattan
-- **Buscar zones amb patró similar** → 📈 Pearson
+### ¿Qué método elegir?
 
-## Com canviar el mètode
+- **Familia con niños** → ⚖️ Weighted (prioriza seguridad y accesibilidad)
+- **Estudiante/Joven profesional** → 🎯 Coseno (balance general)
+- **Búsqueda conservadora** → 📊 ML (resultados más estrictos)
+- **Todas las categorías igual de importantes** → 📏 Manhattan
+- **Buscar zonas con patrón similar** → 📈 Pearson
 
-1. Localitza el botó **"Mètode: [nom]"** a la cantonada inferior dreta del mapa
-2. Fes clic per desplegar el menú
-3. Selecciona un dels 5 mètodes disponibles
-4. El mapa de calor es recalcularà automàticament
+## Cómo cambiar el método
 
-## Exemple d'ús
+1. Localiza el botón **"Método: [nombre]"** en la esquina inferior derecha del mapa
+2. Haz clic para desplegar el menú
+3. Selecciona uno de los 5 métodos disponibles
+4. El mapa de calor se recalculará automáticamente
+
+## Ejemplo de uso
 
 ```
-Prompt: "Busco un lloc tranquil, necessito bon internet per teletreballar, 
-         tinc un gos i m'agradaria estar a prop de parcs. 
-         Pressupost mitjà-alt."
+Prompt: "Busco un lugar tranquilo, necesito buen internet para teletrabajar, 
+         tengo un perro y me gustaría estar cerca de parques. 
+         Presupuesto medio-alto."
 
-Resultat esperat: 
-- Zones amb alta connectivitat (connectivity)
-- Baixa contaminació acústica (noise)
-- Bona puntuació en wellbeing (espais verds)
-- Preu mitjà-alt (income)
+Resultado esperado: 
+- Zonas con alta conectividad (connectivity)
+- Baja contaminación acústica (noise)
+- Buena puntuación en wellbeing (espacios verdes)
+- Precio medio-alto (income)
 
-Mètode recomanat: Coseno o Weighted
+Método recomendado: Coseno o Weighted
 ```
 
-## Notes Tècniques
+## Notas Técnicas
 
-- Tots els mètodes retornen valors normalitzats entre 0 i 1
-- Es requereix un llindar mínim del 30% per mostrar una zona al mapa
-- Cada cel·la del mapa representa una àrea de ~2.36 km² de Los Ángeles
-- Els càlculs s'executen al backend (Python + NumPy) per màxima precisió
+- Todos los métodos devuelven valores normalizados entre 0 y 1
+- Se requiere un umbral mínimo del 30% para mostrar una zona en el mapa
+- Cada celda del mapa representa un área de ~2.36 km² de Los Ángeles
+- Los cálculos se ejecutan en el backend (Python + NumPy) para máxima precisión
+
