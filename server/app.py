@@ -14,47 +14,60 @@ L'objectiu és generar un array de 11 valors flotants (entre 0.0 i 1.0). Cada va
 Aquests són els 11 aspectes (índexs 0-10) i les seves regles de ponderació:
 
 1. Viabilitat econòmica total (Preu alt): 
-   - Si l'usuari té pressupost ajustat = 0.1. Si és ric = 1.0.
+   - Si l'usuari té pressupost ajustat = 0. Si és ric = 1.0.
    - Valor Base (Mínim): 0
 
 2. Seguretat física i privacitat:
    - Important per a famílies, famosos o persones vulnerables.
-   - Valor Base (Mínim): 0.2
+   - Com menys insegur = més alt el valor.
+   - Valor Base (Mínim): 0
 
 3. Connectivitat digital i entorn WFH (Teletreball):
    - Crucial per a "Nòmades digitals" o treballs tecnològics.
-   - Valor Base (Mínim): 0.1
+   - Com millor internet i més espais de treball = més alt el valor.
+   - Valor Base (Mínim): 0
 
-4. Aïllament acústic (Silenci):
+4. Contaminació acústica (soroll):
    - Important per a gent gran, estudiants o gent sensible al soroll.
-   - Valor Base (Mínim): 0.1
+   - Com menys soroll = més alt el valor.
+   - Valor Base (Màxim): 1 
 
 5. Ubicació de “15 minuts” i caminabilitat:
    - Importància de tenir serveis a prop sense agafar cotxe.
-   - Valor Base (Mínim): 0.1
+   - Com més serveis a prop = més alt el valor.
+   - Valor Base (Mínim): 0
 
 6. Accessibilitat i disseny universal:
    - IMPRESCINDIBLE (1.0) si s'esmenta cadira de rodes o mobilitat reduïda.
-   - Valor Base (Mínim): 0.1
+   - valor alt si és gent gran, com 0.6.
+   - Valor Base (Mínim): 0
 
 7. Política pet-friendly i espais verds:
    - Si té gos/gat = 0.9 o 1.0. Si vol naturesa = 0.9 o 1.0.
    - Valor Base (Mínim): 0
 
-8. Mobilitat híbrida (Transport públic/Bici/Cotxe elèctric):
+8. Mobilitat (Transport públic/Bici/Cotxe):
    - Important si no vol conduir o és ecologista.
-   - Valor Base (Mínim): 0.1
+   - Valor alt si esmenta transport públic, bici o cotxe.
+   - Valor de 1 si esmenta més d'un mitjà de transport.
+   - Valor Base (Mínim): 0
 
-9. Espai exterior privat (Terrassa/Jardí):
-   - Valor Base (Mínim): 0.1
+9. Centres educatius:
+    - Proximitat a escoles, universitats.
+    - Valor de 1.0 si és estudiant o té fills.
+    - Valor alt si és parella jove.
+    - Valor Base (Mínim): 0
 
 10. “Vibra” de la comunitat i comoditats funcionals (Ambient jove, famílies, luxe, etc.):
-    - Valor Base (Mínim): 0.1
+    - Com més negocis i preus baixos = més alt el valor.
+    - Valor de 1.0 si esmenta explícitament aquest aspecte.
+    - Valor Base (Mínim): 0
 
 11. Centres mèdics i salut:
     - Proximitat a hospitals.
-    - Aquest valor és globalment important per a tothom.
-    - Valor Base (Mínim): 0.2
+    - Per les persones amb condicions mèdiques específiques, aquest valor ha de ser alt (0.8-1.0).
+    - Per a persones grans, el valor ha de ser moderadament alt (0.5-0.7).
+    - Valor Base (Mínim): 0.1
 
 INSTRUCCIONS DE CÀLCUL:
 1. Comença amb el "Valor Base" per a cada aspecte.
