@@ -49,11 +49,74 @@ El vector tiene 11 componentes (índices 0-10):
 9. **Community Vibe** - Ambiente de la comunidad/comercios
 10. **Health** - Centros médicos/salud
 
-## Método de Cálculo
+## Métodos de Cálculo
 
-- Se utiliza **similitud coseno** para comparar vectores
-- Valores entre 0 (totalmente diferentes) y 1 (idénticos)
-- Cada celda del mapa representa un área de ~2.36 km² de Los Ángeles
+El sistema ofrece **5 métodos diferentes** para calcular la similitud entre tus preferencias y las zonas de Los Ángeles. Puedes cambiar el método en el desplegable "Método" ubicado en la esquina inferior derecha del mapa.
+
+### 1. 🎯 Coseno (Cosine Similarity) - **RECOMENDADO**
+- **Descripción**: Mide el ángulo entre dos vectores, ignorando magnitudes
+- **Ventajas**: Rápido, estable y funciona bien para comparar patrones
+- **Uso ideal**: Búsquedas generales, casos donde importa más el "patrón" de preferencias que los valores exactos
+- **Fórmula**: `similarity = dot(v1, v2) / (||v1|| * ||v2||)`
+- **Rango**: 0 (vectores perpendiculares) a 1 (vectores paralelos)
+
+### 2. 📊 Maximum Likelihood (ML)
+- **Descripción**: Basado en distribución gaussiana, asume que los datos siguen una distribución normal
+- **Ventajas**: Penaliza más las diferencias grandes, da resultados más "suaves"
+- **Uso ideal**: Cuando quieres resultados más conservadores, penalizando zonas muy diferentes
+- **Método**: Calcula distancia euclidiana normalizada y aplica transformación gaussiana (σ=0.3)
+- **Rango**: 0 (muy diferentes) a 1 (idénticos)
+
+### 3. 📏 Manhattan Distance
+- **Descripción**: Suma de diferencias absolutas en cada dimensión (distancia L1)
+- **Ventajas**: Más sensible a diferencias individuales en cada categoría
+- **Uso ideal**: Cuando todas las dimensiones son igualmente importantes
+- **Fórmula**: `distance = Σ|v1[i] - v2[i]|`, luego `similarity = 1 - distance/11`
+- **Rango**: 0 (muy diferentes) a 1 (idénticos)
+
+### 4. ⚖️ Weighted Euclidean (Ponderado)
+- **Descripción**: Distancia euclidiana con pesos personalizados por dimensión
+- **Ventajas**: Prioriza las dimensiones más importantes (crimes, accessibility, health, income)
+- **Uso ideal**: Cuando la seguridad, accesibilidad y salud son prioritarias
+- **Pesos aplicados**:
+  - 🔴 **Seguridad (Crimes)**: 1.5 (máxima prioridad)
+  - 🟡 **Accessibilidad**: 1.3 (alta prioridad)
+  - 🟡 **Income**: 1.2 (alta prioridad)
+  - 🟡 **Salud (Health)**: 1.2 (alta prioridad)
+  - 🟢 **Resto**: 0.8-1.1 (prioridad normal)
+- **Rango**: 0 (muy diferentes) a 1 (idénticos)
+
+### 5. 📈 Pearson Correlation
+- **Descripción**: Mide correlación lineal entre vectores
+- **Ventajas**: Detecta patrones similares incluso con escalas diferentes
+- **Uso ideal**: Cuando importa más la "tendencia" que los valores absolutos
+- **Fórmula**: Coeficiente de correlación de Pearson, normalizado de [-1,1] a [0,1]
+- **Rango**: 0 (no correlacionados/opuestos) a 1 (perfectamente correlacionados)
+
+### Comparación Rápida
+
+| Método | Velocidad | Precisión | Sensibilidad | Mejor para |
+|--------|-----------|-----------|--------------|------------|
+| **Coseno** | ⚡⚡⚡ | ⭐⭐⭐ | Media | Uso general |
+| **ML** | ⚡⚡ | ⭐⭐⭐⭐ | Alta | Resultados conservadores |
+| **Manhattan** | ⚡⚡⚡ | ⭐⭐⭐ | Alta | Balance dimensional |
+| **Weighted** | ⚡⚡ | ⭐⭐⭐⭐⭐ | Muy alta | Priorizar seguridad/salud |
+| **Pearson** | ⚡⚡ | ⭐⭐⭐ | Baja | Patrones similares |
+
+### ¿Qué método elegir?
+
+- **Familia con niños** → ⚖️ Weighted (prioriza seguridad y accesibilidad)
+- **Estudiante/Joven profesional** → 🎯 Coseno (balance general)
+- **Búsqueda conservadora** → 📊 ML (resultados más estrictos)
+- **Todas las categorías igual de importantes** → 📏 Manhattan
+- **Buscar zonas con patrón similar** → 📈 Pearson
+
+## Cómo cambiar el método
+
+1. Localiza el botón **"Método: [nombre]"** en la esquina inferior derecha del mapa
+2. Haz clic para desplegar el menú
+3. Selecciona uno de los 5 métodos disponibles
+4. El mapa de calor se recalculará automáticamente
 
 ## Ejemplo de uso
 
@@ -67,4 +130,13 @@ Resultado esperado:
 - Baja contaminación acústica (noise)
 - Buena puntuación en wellbeing (espacios verdes)
 - Precio medio-alto (income)
+
+Método recomendado: Coseno o Weighted
 ```
+
+## Notas Técnicas
+
+- Todos los métodos devuelven valores normalizados entre 0 y 1
+- Se requiere un umbral mínimo del 30% para mostrar una zona en el mapa
+- Cada celda del mapa representa un área de ~2.36 km² de Los Ángeles
+- Los cálculos se ejecutan en el backend (Python + NumPy) para máxima precisión

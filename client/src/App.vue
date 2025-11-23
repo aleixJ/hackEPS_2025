@@ -302,27 +302,24 @@ export default {
   },
   methods: {
     updatePreferenceInstant(index, value) {
-      // Actualiza el valor instantáneamente mientras se mueve el slider
+      // Actualiza el valor instantáneamente mentre es mou el slider
       this.preferenceVector[index] = parseFloat(value) / 100;
       this.$forceUpdate();
     },
     
     async updatePreferenceAndRecalculate(index, value) {
-      // Actualiza el valor y recalcula el heatmap al soltar el slider
       this.preferenceVector[index] = parseFloat(value) / 100;
       this.$forceUpdate();
       
-      // Actualizar el vector en el backend
       try {
-        await axios.post('http://localhost:5000/api/update-vector', {
+        // Asegúrate de usar la URL correcta con http://
+        await axios.post('http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/update-vector', {
           vector: this.preferenceVector
         });
         
-        // Recargar el mapa de calor si existe
         if (this.heatmapRectangles.length > 0 || this.showHeatmapLayer) {
           await this.loadHeatmap();
           
-          // Activar automáticamente el mapa de calor si estaba oculto
           if (!this.showHeatmapLayer) {
             this.showHeatmapLayer = true;
             this.heatmapRectangles.forEach(rect => rect.addTo(this.map));
@@ -525,7 +522,16 @@ export default {
     
     async loadHeatmap() {
       try {
-        const response = await axios.get(`http://localhost:5000/api/heatmap?method=${this.calculationMethod}`);
+        // CAMBIAR ESTO:
+        // const response = await axios.get(`http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/heatmap?method=${this.calculationMethod}`);
+        
+        // POR ESTO (usar comillas invertidas correctamente):
+        const response = await axios.get(`http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/heatmap`, {
+          params: {
+            method: this.calculationMethod
+          }
+        });
+        
         const { heatmap, rectangle, stats, method } = response.data;
         
         console.log(`Heatmap stats (${method}):`, stats);
@@ -567,8 +573,8 @@ export default {
         'Walkability (15 min)',
         'Accessibility (Acceso)',
         'Wellbeing (Bienestar)',
-        'Mobility (Transporte)',
-        'Education (Educación)',
+        'Mobilitat (Transporte)',
+        'Educació (Educación)',
         'Community Vibe (Ambiente)',
         'Health (Salud)'
       ];
@@ -578,7 +584,7 @@ export default {
     async onSliderChange() {
       // Actualizar el vector en el backend
       try {
-        await axios.post('http://localhost:5000/api/update-vector', {
+        await axios.post('http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/update-vector', {
           vector: this.userVector
         });
         
@@ -1457,7 +1463,7 @@ export default {
     }).addTo(this.map);
 
     // Fetch OSM data from the backend
-    fetch('http://localhost:5000/api/osm-data')
+    fetch('http://ec2-3-85-134-16.compute-1.amazonaws.com:5000/api/osm-data')
       .then(response => response.json())
       .then(data => {
         console.log('OSM data from server:', data);
