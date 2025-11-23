@@ -1,3 +1,7 @@
 Flask==3.0.0
 Flask-CORS==4.0.0
 Werkzeug==3.0.1
+
+api key: 1h5r6eutaet3crs04muhwo4g8
+
+private secret key: athdbto7oin0ycumjc5zsueth90rlgtc5rql6r0v7bqohyvgl 

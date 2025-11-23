@@ -1,13 +1,14 @@
 """Utilities to compute aggregated city statistics across parcel grids.
 
-This module provides functions to divide the LA bounding box into an
-`nx` by `ny` grid of parcels, count crimes that occurred in each parcel
-during the last year using `get_paginated_crimes` from `crime_stats.py`,
-and return the results in a JSON-serializable format.
+This module drives the JSON generation for all city-level statistics
+modules (crime, mobility, education). Run as a script to generate and
+save the crime-like JSON outputs for each dataset.
 """
 
+from typing import Dict
 from crime_stats import save_crime_matrix_json
-
+from mobility_stats import mobility_crimelike_json, save_mobility_crimelike_json
+from education_stats import education_crimelike_json, save_education_crimelike_json
 
 
 # Define LA bounding box locally so this module is self-contained.
@@ -18,14 +19,33 @@ BOUND_N = 34.3344    # North Latitude
 BOUND_S = 33.8624    # South Latitude
 
 
+def generate_all_json(nx: int = 20, ny: int = 20) -> Dict[str, str]:
+    """Generate and save JSON files for crime, mobility, and education.
+
+    Returns a dict mapping dataset name to saved file path.
+    """
+    results: Dict[str, str] = {}
+
+    # 1) Crime: use existing crime_stats saver
+    crime_path = save_crime_matrix_json(nx=nx, ny=ny, max_records_per_parcel=10000)
+    results["crime"] = str(crime_path)
+
+    # 2) Mobility: build crime-like normalized JSON and save
+    mob_data = mobility_crimelike_json(nx, ny)
+    mob_path = save_mobility_crimelike_json(mob_data)
+    results["mobility"] = mob_path
+
+    # 3) Education: build crime-like normalized JSON and save
+    edu_data = education_crimelike_json(nx, ny)
+    edu_path = save_education_crimelike_json(edu_data)
+    results["education"] = edu_path
+
+    return results
+
 
 if __name__ == "__main__":
-    
     cols = 20
     rows = 20
-    
-    # Call the function to save the crime matrix JSON
-    save_crime_matrix_json(nx=cols, ny=rows, max_records_per_parcel=10)
-    
- 
-    
+    saved = generate_all_json(nx=cols, ny=rows)
+    for k, v in saved.items():
+        print(f"Saved {k} JSON to: {v}")
