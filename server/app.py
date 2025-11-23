@@ -1,12 +1,16 @@
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify, Response, stream_with_context, send_from_directory
 from flask_cors import CORS
+import os
 import time
 from api import GeminiAPI
 import json
 from pathlib import Path
 import numpy as np
 
-app = Flask(__name__)
+# Configurar Flask para servir archivos estáticos de Vue
+app = Flask(__name__, 
+            static_folder='../client/dist',
+            static_url_path='')
 
 # Configuración CORS para permitir peticiones desde cualquier origen
 CORS(app, resources={
@@ -192,7 +196,7 @@ def generate():
             llm_output = result['text'].strip()
             # Intentar parsear como JSON array
             user_preference_vector = json.loads(llm_output)
-            print(f"✓ Vector de preferencias guardado: {user_preference_vector}")
+            print(f"✓ Vector de preferences guardado: {user_preference_vector}")
         except json.JSONDecodeError as e:
             print(f"⚠ Error parseando vector JSON: {e}")
             print(f"⚠ Output recibido: {llm_output}")
@@ -306,8 +310,8 @@ matrix_LA_alldata_20x20 = [[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0
 def load_crime_data():
     """
     Carga el JSON de criminalidad y llena la matriz 20x20.
-    Cada celda contendrá una lista donde el índice 0 está vacío y el índice 1 
-    contiene el valor de criminalidad del JSON.
+    Cada celda contendrà una lista on l'índex 0 està buit i l'índex 1 
+    conté el valor de criminalitat del JSON.
     """
     json_path = Path(__file__).parent / 'city_stats' / 'jsons' / 'crime_matrix_20x20_20251122T194040Z.json'
     
@@ -318,18 +322,18 @@ def load_crime_data():
         crime_data = data[0]
         crime_matrix = crime_data['CrimeMatrix']
         
-        # Verificar dimensiones y ajustar si es necesario
+        # Verificar dimensions i ajustar si és necessari
         rows = len(crime_matrix)
         cols = len(crime_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz 20x20 unificada - índice 1 = crimes
+        # Llenar la matriz 20x20 unificada - índex 1 = crimes
         for i in range(20):
             for j in range(20):
-                # Ajustar índices si las dimensiones no coinciden
+                # Ajustar índexs si les dimensions no coincideixen
                 row_idx = min(i, rows - 1) if rows > 0 else 0
                 col_idx = min(j, cols - 1) if cols > 0 else 0
                 
-                # Índice 1: valor de criminalidad
+                # Índex 1: valor de criminalitat
                 crime_value = crime_matrix[row_idx][col_idx] if rows > 0 and cols > 0 else 0.0
                 matrix_LA_alldata_20x20[i][j][1] = crime_value
         
@@ -358,9 +362,9 @@ def load_crime_data():
 
 def load_connectivity_data():
     """
-    Carga el JSON de conectividad y llena una segunda matriz 20x20.
-    Cada celda contendrá una lista donde el índice 0 está vacío y el índice 1 
-    contiene el valor de conectividad del JSON.
+    Carga el JSON de conectivitat i llena una segona matriz 20x20.
+    Cada celda contendrà una lista on l'índex 0 està buit i l'índex 1 
+    conté el valor de conectivitat del JSON.
     """
     json_path = Path(__file__).parent / 'city_stats' / 'jsons' / 'connectivity_matrix_20x20_20251122T214807Z.json'
     
@@ -371,17 +375,17 @@ def load_connectivity_data():
         connectivity_data = data[0]
         connectivity_matrix = connectivity_data['ConnectivityMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(connectivity_matrix)
         cols = len(connectivity_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 2 = connectivity
+        # Llenar la matriz unificada - índex 2 = connectivity
         for i in range(20):
             for j in range(20):
                 row_idx = min(i, rows - 1) if rows > 0 else 0
                 col_idx = min(j, cols - 1) if cols > 0 else 0
                 
-                # Índice 2: valor de conectividad
+                # Índex 2: valor de conectivitat
                 connectivity_value = connectivity_matrix[row_idx][col_idx] if rows > 0 and cols > 0 else 0.0
                 matrix_LA_alldata_20x20[i][j][2] = connectivity_value
         
@@ -406,14 +410,14 @@ def load_connectivity_data():
         print(f"Error: No se encontró el archivo {json_path}")
         return {'success': False, 'error': 'Archivo no encontrado'}
     except Exception as e:
-        print(f"Error al cargar datos de conectividad: {e}")
+        print(f"Error al cargar datos de conectivitat: {e}")
         return {'success': False, 'error': str(e)}
 
 def load_income_data():
     """
-    Carga el JSON de income y llena una tercera matriz 20x20.
-    Cada celda contendrá una lista donde el índice 0 está vacío y el índice 1 
-    contiene el valor de income del JSON.
+    Carga el JSON de income i llena una tercera matriz 20x20.
+    Cada celda contendrà una lista on l'índex 0 està buit i l'índex 1 
+    conté el valor de income del JSON.
     """
     json_path = Path(__file__).parent / 'city_stats' / 'jsons' / 'income_matrix_20x20.json'
     
@@ -424,17 +428,17 @@ def load_income_data():
         income_data = data[0]
         income_matrix = income_data['matrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(income_matrix)
         cols = len(income_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 0 = income
+        # Llenar la matriz unificada - índex 0 = income
         for i in range(20):
             for j in range(20):
                 row_idx = min(i, rows - 1) if rows > 0 else 0
                 col_idx = min(j, cols - 1) if cols > 0 else 0
                 
-                # Índice 0: valor de income
+                # Índex 0: valor de income
                 income_value = income_matrix[row_idx][col_idx] if rows > 0 and cols > 0 else 0.0
                 matrix_LA_alldata_20x20[i][j][0] = income_value
         
@@ -463,8 +467,8 @@ def load_income_data():
 
 def load_noise_data():
     """
-    Carga el JSON de noise y llena el índice 3 de la matriz unificada.
-    Cada celda contendrá el valor de noise en el índice 3 del vector.
+    Carga el JSON de noise i llena el índex 3 de la matriz unificada.
+    Cada celda contendrà el valor de noise en el índex 3 del vector.
     """
     json_path = Path(__file__).parent / 'city_stats' / 'jsons' / 'noise_matrix_20x20_20251122T233126Z.json'
     
@@ -475,17 +479,17 @@ def load_noise_data():
         noise_data = data[0]
         noise_matrix = noise_data['NoiseMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(noise_matrix)
         cols = len(noise_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 3 = noise
+        # Llenar la matriz unificada - índex 3 = noise
         for i in range(20):
             for j in range(20):
                 row_idx = min(i, rows - 1) if rows > 0 else 0
                 col_idx = min(j, cols - 1) if cols > 0 else 0
                 
-                # Índice 3: valor de noise
+                # Índex 3: valor de noise
                 noise_value = noise_matrix[row_idx][col_idx] if rows > 0 and cols > 0 else 0.0
                 matrix_LA_alldata_20x20[i][j][3] = noise_value
         
@@ -514,8 +518,8 @@ def load_noise_data():
 
 def load_accessibility_data():
     """
-    Carga el JSON de accessibility y llena el índice 5 de la matriz unificada.
-    Cada celda contendrá el valor de accessibility en el índice 5 del vector.
+    Carga el JSON de accessibility i llena el índex 5 de la matriz unificada.
+    Cada celda contendrà el valor de accessibility en el índex 5 del vector.
     """
     # Buscar el archivo más reciente de accessibility
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -536,11 +540,11 @@ def load_accessibility_data():
         accessibility_data = data[0]
         accessibility_matrix = accessibility_data['AccessibilityMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(accessibility_matrix)
         cols = len(accessibility_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 5 = accessibility
+        # Llenar la matriz unificada - índex 5 = accessibility
         for i in range(20):
             for j in range(20):
                 if i < rows and j < cols:
@@ -572,8 +576,8 @@ def load_accessibility_data():
 
 def load_wellbeing_data():
     """
-    Carga el JSON de wellbeing y llena el índice 6 de la matriz unificada.
-    Cada celda contendrá el valor de wellbeing en el índice 6 del vector.
+    Carga el JSON de wellbeing i llena el índex 6 de la matriz unificada.
+    Cada celda contendrà el valor de wellbeing en el índex 6 del vector.
     """
     # Buscar el archivo más reciente de wellbeing
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -594,11 +598,11 @@ def load_wellbeing_data():
         wellbeing_data = data[0]
         wellbeing_matrix = wellbeing_data['WellbeingMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(wellbeing_matrix)
         cols = len(wellbeing_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 6 = wellbeing
+        # Llenar la matriz unificada - índex 6 = wellbeing
         for i in range(20):
             for j in range(20):
                 if i < rows and j < cols:
@@ -630,8 +634,8 @@ def load_wellbeing_data():
 
 def load_mobility_data():
     """
-    Carga el JSON de mobility y llena el índice 7 de la matriz unificada.
-    Cada celda contendrá el valor de mobility en el índice 7 del vector.
+    Carga el JSON de mobility i llena el índex 7 de la matriz unificada.
+    Cada celda contendrà el valor de mobility en el índex 7 del vector.
     """
     # Buscar el archivo mobility
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -652,12 +656,12 @@ def load_mobility_data():
         vertical_step = data[0]['VerticalStep']
         horizontal_step = data[0]['HorizontalStep']
         
-        # Llenar el índice 7 de la matriz unificada
+        # Llenar el índex 7 de la matriz unificada
         for i in range(20):
             for j in range(20):
                 matrix_LA_alldata_20x20[i][j][7] = mobility_matrix[i][j]
         
-        print("✓ Datos de mobility cargados correctamente en índice 7")
+        print("✓ Datos de mobility cargados correctamente en índex 7")
         return {
             'success': True,
             'origin': f"N:{data[0]['Norigin']}, W:{data[0]['WOrigin']}",
@@ -673,8 +677,8 @@ def load_mobility_data():
 
 def load_education_data():
     """
-    Carga el JSON de education y llena el índice 8 de la matriz unificada.
-    Cada celda contendrá el valor de education en el índice 8 del vector.
+    Carga el JSON de education i llena el índex 8 de la matriz unificada.
+    Cada celda contendrà el valor de education en el índex 8 del vector.
     """
     # Buscar el archivo education
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -696,12 +700,12 @@ def load_education_data():
         vertical_step = data[0]['VerticalStep']
         horizontal_step = data[0]['HorizontalStep']
         
-        # Llenar el índice 8 de la matriz unificada
+        # Llenar el índex 8 de la matriz unificada
         for i in range(20):
             for j in range(20):
                 matrix_LA_alldata_20x20[i][j][8] = education_matrix[i][j]
         
-        print("✓ Datos de education cargados correctamente en índice 8")
+        print("✓ Datos de education cargados correctamente en índex 8")
         return {
             'success': True,
             'origin': f"N:{data[0]['Norigin']}, W:{data[0]['WOrigin']}",
@@ -717,8 +721,8 @@ def load_education_data():
 
 def load_health_data():
     """
-    Carga el JSON de health y llena el índice 10 de la matriz unificada.
-    Cada celda contendrá el valor de health en el índice 10 del vector.
+    Carga el JSON de health i llena el índex 10 de la matriz unificada.
+    Cada celda contendrà el valor de health en el índex 10 del vector.
     """
     # Buscar el archivo más reciente de health
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -739,11 +743,11 @@ def load_health_data():
         health_data = data[0]
         health_matrix = health_data['HealthMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(health_matrix)
         cols = len(health_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 10 = health
+        # Llenar la matriz unificada - índex 10 = health
         for i in range(20):
             for j in range(20):
                 if i < rows and j < cols:
@@ -775,8 +779,8 @@ def load_health_data():
 
 def load_community_vibe_data():
     """
-    Carga el JSON de community vibe y llena el índice 10 de la matriz unificada.
-    Cada celda contendrá el valor de community vibe en el índice 10 del vector.
+    Carga el JSON de community vibe i llena el índex 10 de la matriz unificada.
+    Cada celda contendrà el valor de community vibe en el índex 10 del vector.
     """
     # Buscar el archivo más reciente de community_vibe
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -797,11 +801,11 @@ def load_community_vibe_data():
         community_vibe_data = data[0]
         community_vibe_matrix = community_vibe_data['CommunityVibMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(community_vibe_matrix)
         cols = len(community_vibe_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 9 = community_vibe
+        # Llenar la matriz unificada - índex 9 = community_vibe
         for i in range(20):
             for j in range(20):
                 if i < rows and j < cols:
@@ -833,8 +837,8 @@ def load_community_vibe_data():
 
 def load_walkability_data():
     """
-    Carga el JSON de walkability y llena el índice 4 de la matriz unificada.
-    Cada celda contendrá el valor de walkability en el índice 4 del vector.
+    Carga el JSON de walkability i llena el índex 4 de la matriz unificada.
+    Cada celda contendrà el valor de walkability en el índex 4 del vector.
     """
     # Buscar el archivo más reciente de walkability
     json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
@@ -855,11 +859,11 @@ def load_walkability_data():
         walkability_data = data[0]
         walkability_matrix = walkability_data['WalkabilityMatrix']
         
-        # Verificar dimensiones
+        # Verificar dimensions
         rows = len(walkability_matrix)
         cols = len(walkability_matrix[0]) if rows > 0 else 0
         
-        # Llenar la matriz unificada - índice 4 = walkability
+        # Llenar la matriz unificada - índex 4 = walkability
         for i in range(20):
             for j in range(20):
                 if i < rows and j < cols:
@@ -905,14 +909,14 @@ community_vibe_info = load_community_vibe_data()
 
 def calculate_similarity(vector1, vector2, method='cosine'):
     """
-    Calcula la similitud entre dos vectores usando diferentes métodos.
+    Calcula la similitud entre dos vectores usando diferents mètodes.
     
     Args:
-        vector1: Vector de preferencias del usuario
-        vector2: Vector de características de la celda
-        method: 'cosine' para similitud coseno o 'ml' para Maximum Likelihood
+        vector1: Vector de preferències de l'usuari
+        vector2: Vector de característiques de la cel·la
+        method: 'cosine' per a similitud coseno o 'ml' per a Maximum Likelihood
     
-    Retorna un valor entre 0 (totalmente diferentes) y 1 (idénticos).
+    Retorna un valor entre 0 (totalment diferents) i 1 (idéntics).
     """
     try:
         v1 = np.array(vector1, dtype=float)
@@ -931,38 +935,38 @@ def calculate_similarity(vector1, vector2, method='cosine'):
             similarity = max(0.0, min(1.0, similarity))
             
         elif method == 'ml':
-            # Maximum Likelihood - usando distribución gaussiana
-            # Calculamos la probabilidad de que v2 sea generado por una distribución
+            # Maximum Likelihood - usando distribució gaussiana
+            # Calculem la probabilitat que v2 sigui generat per una distribució
             # centrada en v1
             
-            # Diferencia entre vectores
+            # Diferència entre vectors
             diff = v1 - v2
             
-            # Distancia euclidiana
+            # Distància euclidiana
             euclidean_distance = np.linalg.norm(diff)
             
-            # La distancia máxima posible entre dos vectores [0,1]^11 es sqrt(11)
+            # La distància màxima possible entre dos vectors [0,1]^11 és sqrt(11)
             max_distance = np.sqrt(11)
             
-            # Convertir distancia a similitud (1 - distancia_normalizada)
-            # Cuando distancia = 0, similitud = 1
-            # Cuando distancia = max_distance, similitud = 0
+            # Convertir distància a similitud (1 - distància_normalitzada)
+            # Quan distància = 0, similitud = 1
+            # Quan distància = max_distance, similitud = 0
             similarity = 1.0 - (euclidean_distance / max_distance)
             
-            # Aplicar una transformación gaussiana para suavizar
-            # Esto da más peso a las similitudes altas
-            sigma = 0.3  # Controla la "suavidad" de la curva
+            # Aplicar una transformació gaussiana per a suavitzar
+            # Això dóna més pes a les similituds altes
+            sigma = 0.3  # Controla la "suavitat" de la corba
             similarity = np.exp(-((1 - similarity) ** 2) / (2 * sigma ** 2))
             
-            # Asegurar que está en el rango [0, 1]
+            # Assegurar que està en el rang [0, 1]
             similarity = max(0.0, min(1.0, similarity))
             
         elif method == 'manhattan':
             # Manhattan Distance (L1)
-            # Suma de diferencias absolutas
+            # Suma de diferències absolutes
             manhattan_distance = np.sum(np.abs(v1 - v2))
             
-            # La distancia máxima posible es 11 (cada componente puede diferir en 1)
+            # La distància màxima possible és 11 (cada component pot diferir en 1)
             max_distance = 11.0
             
             # Convertir a similitud
@@ -971,75 +975,75 @@ def calculate_similarity(vector1, vector2, method='cosine'):
             
         elif method == 'weighted':
             # Weighted Euclidean Distance
-            # Pesos para cada dimensión (ajustables según importancia)
+            # Pesos per a cada dimensió (ajustables segons importància)
             weights = np.array([
-                1.2,  # 0: income (más peso)
-                1.5,  # 1: crimes (MUY importante - más peso)
+                1.2,  # 0: income (més pes)
+                1.5,  # 1: crimes (MOLT important - més pes)
                 1.0,  # 2: connectivity
                 1.0,  # 3: noise
                 0.8,  # 4: walkability
-                1.3,  # 5: accessibility (importante)
+                1.3,  # 5: accessibility (important)
                 0.9,  # 6: wellbeing
                 0.9,  # 7: mobility
                 1.1,  # 8: education
                 0.8,  # 9: community_vibe
-                1.2   # 10: health (importante)
+                1.2   # 10: health (important)
             ])
             
-            # Calcular distancia ponderada
+            # Calcular distància ponderada
             diff = v1 - v2
             weighted_distance = np.sqrt(np.sum(weights * (diff ** 2)))
             
-            # Normalizar por la máxima distancia ponderada posible
+            # Normalitzar per la màxima distància ponderada possible
             max_distance = np.sqrt(np.sum(weights))
             
             # Convertir a similitud
             similarity = 1.0 - (weighted_distance / max_distance)
             
-            # Aplicar transformación suave
+            # Aplicar transformació suau
             similarity = np.exp(-((1 - similarity) ** 2) / 0.2)
             similarity = max(0.0, min(1.0, similarity))
             
         elif method == 'pearson':
             # Pearson Correlation Coefficient
-            # Mide correlación lineal entre vectores
+            # Mesura correlació lineal entre vectors
             
-            # Evitar división por cero
+            # Evitar divisió per zero
             if np.std(v1) == 0 or np.std(v2) == 0:
                 return 0.0
             
-            # Calcular correlación de Pearson
+            # Calcular correlació de Pearson
             correlation = np.corrcoef(v1, v2)[0, 1]
             
-            # Manejar NaN (puede ocurrir con vectores constantes)
+            # Manejar NaN (pot ocórrer amb vectors constants)
             if np.isnan(correlation):
                 return 0.0
             
             # Convertir de [-1, 1] a [0, 1]
-            # correlation = -1 (totalmente opuestos) -> similarity = 0
-            # correlation = 0 (sin correlación) -> similarity = 0.5
-            # correlation = 1 (idénticos) -> similarity = 1
+            # correlation = -1 (totalment oposats) -> similarity = 0
+            # correlation = 0 (sense correlació) -> similarity = 0.5
+            # correlation = 1 (idéntics) -> similarity = 1
             similarity = (correlation + 1) / 2
             similarity = max(0.0, min(1.0, similarity))
             
         else:
-            # Método por defecto: coseno
+            # Mètode per defecte: coseno
             return calculate_similarity(vector1, vector2, 'cosine')
         
         return float(similarity)
         
     except Exception as e:
-        print(f"Error calculando similitud: {e}")
+        print(f"Error calculant similitud: {e}")
         return 0.0
 
 def generate_heatmap(method='cosine'):
     """
-    Genera un mapa de calor comparando user_preference_vector con cada celda de la matriz.
+    Genera un mapa de calor comparant user_preference_vector amb cada cel·la de la matriu.
     
     Args:
-        method: 'cosine' para similitud coseno o 'ml' para Maximum Likelihood
+        method: 'cosine' per a similitud coseno o 'ml' per a Maximum Likelihood
     
-    Retorna una matriz 20x20 con valores de similitud entre 0 y 1.
+    Retorna una matriu 20x20 amb valors de similitud entre 0 i 1.
     """
     global user_preference_vector
     
@@ -1059,16 +1063,16 @@ def generate_heatmap(method='cosine'):
 @app.route('/api/heatmap', methods=['GET'])
 def get_heatmap():
     """
-    Endpoint que retorna el mapa de calor basado en las preferencias del usuario.
+    Endpoint que retorna el mapa de calor basat en les preferències de l'usuari.
     
     Query params:
-        method: 'cosine' (default), 'ml', 'manhattan', 'weighted', o 'pearson'
+        method: 'cosine' (per defecte), 'ml', 'manhattan', 'weighted', o 'pearson'
     """
     global user_preference_vector
     
     if not user_preference_vector or len(user_preference_vector) != 11:
         return jsonify({
-            'error': 'No hay vector de preferencias válido. Primero genera un vector usando /api/generate'
+            'error': 'No hi ha vector de preferències vàlid. Primer genera un vector fent servir /api/generate'
         }), 400
     
     # Obtener método desde query params
@@ -1080,10 +1084,10 @@ def get_heatmap():
     
     if heatmap is None:
         return jsonify({
-            'error': 'Error generando mapa de calor'
+            'error': 'Error generant mapa de calor'
         }), 500
     
-    # Encontrar el valor máximo y mínimo para normalización si es necesario
+    # Trobar el valor màxim i mínim per a normalització si és necessari
     flat_values = [val for row in heatmap for val in row]
     max_similarity = max(flat_values) if flat_values else 1.0
     min_similarity = min(flat_values) if flat_values else 0.0
@@ -1108,7 +1112,7 @@ def get_heatmap():
 @app.route('/api/update-vector', methods=['POST'])
 def update_vector():
     """
-    Endpoint para actualizar el vector de preferencias del usuario.
+    Endpoint per a actualitzar el vector de preferències de l'usuari.
     """
     global user_preference_vector
     
@@ -1120,18 +1124,18 @@ def update_vector():
         
         new_vector = data['vector']
         
-        # Validar que sea un array de 11 elementos
+        # Validar que sigui un array de 11 elements
         if not isinstance(new_vector, list) or len(new_vector) != 11:
             return jsonify({'error': 'Vector must have exactly 11 elements'}), 400
         
-        # Validar que todos los valores estén entre 0 y 1
+        # Validar que tots els valors estiguin entre 0 i 1
         for val in new_vector:
             if not isinstance(val, (int, float)) or val < 0 or val > 1:
                 return jsonify({'error': 'All vector values must be between 0 and 1'}), 400
         
-        # Actualizar el vector global
+        # Actualitzar el vector global
         user_preference_vector = new_vector
-        print(f"✓ Vector actualizado manualmente: {user_preference_vector}")
+        print(f"✓ Vector actualitzat manualment: {user_preference_vector}")
         
         return jsonify({
             'success': True,
@@ -1169,7 +1173,7 @@ def get_osm_data():
         'matrix_LA_alldata_20x20': matrix_LA_alldata_20x20,
         'data_info': data_info,
         'vector_format': {
-            'description': 'Cada celda es un vector [income, crimes, connectivity, noise, walkability, accessibility, wellbeing, mobility, education, community_vibe, health]',
+            'description': 'Cada cel·la és un vector [income, crimes, connectivity, noise, walkability, accessibility, wellbeing, mobility, education, community_vibe, health]',
             'indices': {
                 '0': 'income (0-1)',
                 '1': 'crimes (0-1)',
@@ -1185,6 +1189,19 @@ def get_osm_data():
             }
         }
         })
+
+# Ruta per servir l'aplicació Vue (ha d'anar AL FINAL)
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_vue_app(path):
+    """
+    Serveix l'aplicació Vue.js des del directori dist.
+    Si el fitxer no existeix, serveix index.html (per a Vue Router).
+    """
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     # Para producción en EC2 - escuchar en todas las interfaces
