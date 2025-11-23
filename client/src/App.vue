@@ -61,7 +61,9 @@
                   min="0" 
                   max="100" 
                   :value="preferenceVector[index] * 100"
-                  @input="updatePreference(index, $event.target.value)"
+                  @input="updatePreferenceInstant(index, $event.target.value)"
+                  @mouseup="updatePreferenceAndRecalculate(index, $event.target.value)"
+                  @touchend="updatePreferenceAndRecalculate(index, $event.target.value)"
                   class="slider"
                 />
               </div>
@@ -185,13 +187,13 @@ export default {
       aiOutput: '',
       preferenceVector: [],
       aspectNames: [
-        'Viabilitat econòmica',
-        'Seguretat',
+        'Poder Adquisitiu',
+        'Criminalitat',
         'Connectivitat WFH',
-        'Soroll baix',
+        'Soroll',
         'Walkability 15min',
         'Accessibilitat',
-        'Espais verds/Pets',
+        'Espais verds/Mascotes',
         'Mobilitat',
         'Educació',
         'Community Vibe',
@@ -299,10 +301,37 @@ export default {
     }
   },
   methods: {
-    updatePreference(index, value) {
+    updatePreferenceInstant(index, value) {
+      // Actualiza el valor instantáneamente mientras se mueve el slider
       this.preferenceVector[index] = parseFloat(value) / 100;
-      // Forçar actualització del gràfic
       this.$forceUpdate();
+    },
+    
+    async updatePreferenceAndRecalculate(index, value) {
+      // Actualiza el valor y recalcula el heatmap al soltar el slider
+      this.preferenceVector[index] = parseFloat(value) / 100;
+      this.$forceUpdate();
+      
+      // Actualizar el vector en el backend
+      try {
+        await axios.post('http://localhost:5000/api/update-vector', {
+          vector: this.preferenceVector
+        });
+        
+        // Recargar el mapa de calor si existe
+        if (this.heatmapRectangles.length > 0 || this.showHeatmapLayer) {
+          await this.loadHeatmap();
+          
+          // Activar automáticamente el mapa de calor si estaba oculto
+          if (!this.showHeatmapLayer) {
+            this.showHeatmapLayer = true;
+            this.heatmapRectangles.forEach(rect => rect.addTo(this.map));
+          }
+        }
+      } catch (err) {
+        console.error('Error updating vector:', err);
+        this.error = 'Error actualizando preferencias';
+      }
     },
     async generateOutput() {
       if (!this.userPrompt.trim()) {
@@ -322,7 +351,7 @@ export default {
         this.aiOutput = response.data.output;
         
         // Cargar el mapa de calor automáticamente después de generar el vector
-        if (response.data.vector && response.data.vector.length === 11 && Array.isArray(response.data.vector) {
+        if (response.data.vector && Array.isArray(response.data.vector) && response.data.vector.length === 11) {
           
         // Guardar el vector de preferències
           this.preferenceVector = response.data.vector;
@@ -331,6 +360,7 @@ export default {
           this.error = 'No s\'ha rebut un vector vàlid de la IA';
 
         }
+        
       } catch (err) {
         this.error = err.response?.data?.error || 'An error occurred while generating output';
         console.error('Error:', err);
@@ -526,6 +556,45 @@ export default {
         'pearson': 'Pearson'
       };
       return names[method] || 'Coseno';
+    },
+    
+    getVectorLabel(index) {
+      const labels = [
+        'Income (Precio)',
+        'Crimes (Seguridad)',
+        'Connectivity (Internet)',
+        'Noise (Ruido)',
+        'Walkability (15 min)',
+        'Accessibility (Acceso)',
+        'Wellbeing (Bienestar)',
+        'Mobility (Transporte)',
+        'Education (Educación)',
+        'Community Vibe (Ambiente)',
+        'Health (Salud)'
+      ];
+      return labels[index] || `Índice ${index}`;
+    },
+    
+    async onSliderChange() {
+      // Actualizar el vector en el backend
+      try {
+        await axios.post('http://localhost:5000/api/update-vector', {
+          vector: this.userVector
+        });
+        
+        // Recargar el mapa de calor con el nuevo vector
+        if (this.heatmapRectangles.length > 0 || this.showHeatmapLayer) {
+          await this.loadHeatmap();
+          
+          // Activar automáticamente el mapa de calor si estaba oculto
+          if (!this.showHeatmapLayer) {
+            this.showHeatmapLayer = true;
+            this.heatmapRectangles.forEach(rect => rect.addTo(this.map));
+          }
+        }
+      } catch (err) {
+        console.error('Error updating vector:', err);
+      }
     },
     
     getHeatmapColor(similarity) {

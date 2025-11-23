@@ -1089,6 +1089,42 @@ def get_heatmap():
         }
     })
 
+@app.route('/api/update-vector', methods=['POST'])
+def update_vector():
+    """
+    Endpoint para actualizar el vector de preferencias del usuario.
+    """
+    global user_preference_vector
+    
+    try:
+        data = request.get_json()
+        
+        if not data or 'vector' not in data:
+            return jsonify({'error': 'No vector provided'}), 400
+        
+        new_vector = data['vector']
+        
+        # Validar que sea un array de 11 elementos
+        if not isinstance(new_vector, list) or len(new_vector) != 11:
+            return jsonify({'error': 'Vector must have exactly 11 elements'}), 400
+        
+        # Validar que todos los valores estén entre 0 y 1
+        for val in new_vector:
+            if not isinstance(val, (int, float)) or val < 0 or val > 1:
+                return jsonify({'error': 'All vector values must be between 0 and 1'}), 400
+        
+        # Actualizar el vector global
+        user_preference_vector = new_vector
+        print(f"✓ Vector actualizado manualmente: {user_preference_vector}")
+        
+        return jsonify({
+            'success': True,
+            'vector': user_preference_vector
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/osm-data')
 def get_osm_data():
     # Información sobre los datos cargados
