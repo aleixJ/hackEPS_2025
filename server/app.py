@@ -7,7 +7,23 @@ from pathlib import Path
 import numpy as np
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Configuración CORS para permitir peticiones desde cualquier origen
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": False
+    }
+})
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 # System prompt for Real Estate Recommendation Engine
 SYSTEM_PROMPT_TEMPLATE = """Actua com un analista de dades expert per a una API de recomanació immobiliària. La teva tasca és analitzar una descripció en llenguatge natural d'un usuari (el "User Persona") i traduir les seves necessitats explícites i implícites en un vector numèric de preferències.
@@ -1046,13 +1062,13 @@ def get_heatmap():
     Endpoint que retorna el mapa de calor basado en las preferencias del usuario.
     
     Query params:
-        method: 'cosine' (default) o 'ml' para Maximum Likelihood
+        method: 'cosine' (default), 'ml', 'manhattan', 'weighted', o 'pearson'
     """
     global user_preference_vector
     
-    if not user_preference_vector:
+    if not user_preference_vector or len(user_preference_vector) != 11:
         return jsonify({
-            'error': 'No hay vector de preferencias. Primero genera un vector usando /api/generate'
+            'error': 'No hay vector de preferencias válido. Primero genera un vector usando /api/generate'
         }), 400
     
     # Obtener método desde query params
@@ -1168,9 +1184,8 @@ def get_osm_data():
                 '10': 'health (0-1)'
             }
         }
-    })
+        })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-
-
+    # Para producción en EC2 - escuchar en todas las interfaces
+    app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
