@@ -1,0 +1,114 @@
+/* Estilos específicos para el panel LLM */
+.prompt-panel .prompt-container {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.prompt-panel h2 {
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.prompt-panel .input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prompt-panel label {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.prompt-panel textarea {
+  width: 90%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.prompt-panel textarea:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.prompt-panel textarea:disabled {
+  background-color: #f9f9f9;
+  cursor: not-allowed;
+}
+
+.prompt-panel .button-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.prompt-panel .btn {
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.prompt-panel .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prompt-panel .btn-primary {
+  background: #4a90e2;
+  color: white;
+}
+
+.prompt-panel .btn-primary:hover:not(:disabled) {
+  background: #357abd;
+}
+
+.prompt-panel .btn-secondary {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.prompt-panel .btn-secondary:hover:not(:disabled) {
+  background: #d0d0d0;
+}
+
+.prompt-panel .output-content {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 120px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #333;
+  line-height: 1.6;
+}
+
+.prompt-panel .error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ffcdd2;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .prompt-panel .button-group {
+    flex-direction: column;
+  }
+
+  .prompt-panel .btn {
+    width: 100%;
+  }
+}

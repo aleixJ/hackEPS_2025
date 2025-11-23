@@ -1,0 +1,22 @@
+{
+  "name": "hackeps-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chart.js": "^4.5.1",
+    "leaflet": "^1.9.4",
+    "osmtogeojson": "^3.0.0-beta.5",
+    "vue": "^3.4.0",
+    "vue-chartjs": "^5.3.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.0.0"
+  }
+}
