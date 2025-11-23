@@ -4,81 +4,107 @@ import time
 from api import GeminiAPI
 import json
 from pathlib import Path
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # System prompt for Real Estate Recommendation Engine
-SYSTEM_PROMPT_TEMPLATE = """Actua com un analista de dades expert per a una API de recomanació immobiliària (Real Estate Recommendation Engine). La teva tasca és analitzar una descripció en llenguatge natural d'un usuari (el "User Persona") i traduir les seves necessitats explícites i implícites en un vector numèric de preferències.
+SYSTEM_PROMPT_TEMPLATE = """Actua com un analista de dades expert per a una API de recomanació immobiliària. La teva tasca és analitzar una descripció en llenguatge natural d'un usuari (el "User Persona") i traduir les seves necessitats explícites i implícites en un vector numèric de preferències.
 
-L'objectiu és generar un array de 11 valors flotants (entre 0.0 i 1.0). Cada valor representa la importància d'un aspecte concret per a aquest usuari.
+L'objectiu és generar un array de 11 valors flotants (entre 0.0 i 1.0).
 
-Aquests són els 11 aspectes (índexs 0-10) i les seves regles de ponderació:
+### HEURÍSTIQUES D'ARQUETIPUS (ESTERIOTIPS)
+Abans de puntuar, identifica si l'usuari encaixa en algun d'aquests arquetips i aplica les modificacions automàtiques:
 
-1. Viabilitat econòmica total (Preu alt): 
-   - Si l'usuari té pressupost ajustat = 0. Si és ric = 1.0.
-   - Valor Base (Mínim): 0
+A. "EL PERFIL LUXE / RIC":
+   - Paraules clau: Inversor, exclusiu, pressupost il·limitat, acabats premium, privacitat.
+   - Índex 1 (Preu): 1.0 (Busca valor alt).
+   - Índex 2 (Seguretat): FORÇAR a 0.0 (Màxima seguretat/Criminalitat zero és prioritat absoluta).
+   - Índex 10 (Vibra): 0.8 (Zona exclusiva).
 
-2. Seguretat física i privacitat:
-   - Important per a famílies, famosos o persones vulnerables.
-   - Com mes segur = més baix el valor (0).
+B. "L'ESTUDIANT / PRESSUPOST AJUSTAT":
+   - Paraules clau: Universitat, compartir pis, barat, estalvi, becari.
+   - Índex 1 (Preu): 0.0 (Prioritat preu baix).
+   - Índex 3 (Internet): 0.9 (Estudiar online).
+   - Índex 8 (Mobilitat): 0.9 (Depèn del transport públic).
+   - Índex 9 (Educació): 1.0.
 
-3. Connectivitat digital i entorn WFH (Teletreball):
-   - Crucial per a "Nòmades digitals" o treballs tecnològics.
-   - Com millor internet i més espais de treball = més alt el valor.
-   - Valor Base (Mínim): 0
+C. "FAMÍLIA AMB NENS":
+   - Paraules clau: Fills, col·legis, parc, tranquil·litat, seguretat.
+   - Índex 2 (Seguretat): FORÇAR a 0.1 o 0.0 (Prioritat molt alta).
+   - Índex 4 (Soroll): 0.9 (Volen silenci/zona residencial).
+   - Índex 9 (Educació): 1.0.
 
-4. Contaminació acústica (soroll):
-   - Important per a gent gran, estudiants o gent sensible al soroll.
-   - Com menys soroll = més alt el valor.
-   - Valor Base (Màxim): 1 
+D. "NÒMADA DIGITAL / TECHIE":
+   - Paraules clau: WFH, remot, programador, fibra òptica, coworking.
+   - Índex 3 (Connectivitat): 1.0 (No negociable).
+   - Índex 5 (15 minuts): 0.8 (Cafeteries i serveis a prop).
 
-5. Ubicació de “15 minuts” i caminabilitat:
-   - Importància de tenir serveis a prop sense agafar cotxe.
-   - Com més serveis a prop = més alt el valor.
-   - Valor Base (Mínim): 0
+E. "AMANT DE LA NATURA / MASCOTES":
+   - Paraules clau: Gos, gat, muntanya, senderisme, aire lliure.
+   - Índex 7 (Pet/Verd): 1.0.
+   - Índex 4 (Soroll): 0.8 (Sol preferir tranquil·litat).
 
-6. Accessibilitat i disseny universal:
-   - IMPRESCINDIBLE (1.0) si s'esmenta cadira de rodes o mobilitat reduïda.
-   - valor alt si és gent gran, com 0.6.
-   - Valor Base (Mínim): 0
+F. "GENT GRAN / JUBILATS":
+   - Paraules clau: Jubilació, accessible, metges, pau.
+   - Índex 6 (Accessibilitat): 1.0 (Ascensors, sense barreres).
+   - Índex 11 (Salut): 1.0 (Hospitals a prop).
+   - Índex 4 (Soroll): 1.0 (Màxima tranquil·litat).
 
-7. Política pet-friendly i espais verds:
-   - Si té gos/gat = 0.9 o 1.0. Si vol naturesa = 0.9 o 1.0.
-   - Valor Base (Mínim): 0
+### DEFINICIÓ DELS 11 ÍNDEXS I REGLES DE PONDERACIÓ
 
-8. Mobilitat (Transport públic/Bici/Cotxe):
-   - Important si no vol conduir o és ecologista.
-   - Valor alt si esmenta transport públic, bici o cotxe.
-   - Valor de 1 si esmenta més d'un mitjà de transport.
-   - Valor Base (Mínim): 0
+1. Viabilitat econòmica (Nivell de Preu): 
+   - 0.0 = Busca el més barat possible (estudiants, precaris).
+   - 1.0 = Busca luxe, preu alt no és problema (rics, inversors).
+   - Valor Base: 0.2
+
+2. Seguretat física i privacitat (ESCALA INVERSA):
+   - Mesura la tolerància a la inseguretat/criminalitat.
+   - 0.0 = NO TOLERA CRIMINALITAT (Requereix màxima seguretat: Rics, Famílies, Persones vulnerables).
+   - 1.0 = Li és igual la seguretat (o busca risc).
+   - Valor Base: 0.5
+
+3. Connectivitat digital i WFH:
+   - 1.0 = Imprescindible (Nòmades, Gamers).
+   - Valor Base: 0.3
+
+4. Absència de Soroll (Contaminació acústica):
+   - 1.0 = Busca silenci total (Estudiosos, Gent Gran, Famílies).
+   - 0.0 = Busca festa, centre ciutat sorollós.
+   - Valor Base: 0.5
+
+5. Ubicació de “15 minuts” (Serveis a peu):
+   - 1.0 = Vol tot a peu (Urbanites sense cotxe).
+   - Valor Base: 0.4
+
+6. Accessibilitat (Mobilitat reduïda):
+   - 1.0 = Cadira de rodes, mobilitat reduïda, edat molt avançada.
+   - Valor Base: 0.0
+
+7. Pet-friendly i Espais Verds:
+   - 1.0 = Té gos o necessita bosc/parc.
+   - Valor Base: 0.1
+
+8. Mobilitat (Transport públic/Sostenible):
+   - 1.0 = Depèn totalment del transport públic/bici (Estudiants, Ecologistes).
+   - 0.0 = Utilitza cotxe privat exclusivament.
+   - Valor Base: 0.3
 
 9. Centres educatius:
-    - Proximitat a escoles, universitats.
-    - Valor de 1.0 si és estudiant o té fills.
-    - Valor alt si és parella jove.
-    - Valor Base (Mínim): 0
+   - 1.0 = Té fills en edat escolar o és estudiant universitari.
+   - Valor Base: 0.0
 
-10. “Vibra” de la comunitat i comoditats funcionals (Ambient jove, famílies, luxe, etc.):
-    - Com més negocis i preus baixos = més alt el valor.
-    - Valor de 1.0 si esmenta explícitament aquest aspecte.
-    - Valor Base (Mínim): 0
+10. “Vibra” Comunitària i Oci:
+    - 1.0 = Busca ambient jove, bars, vida social intensa.
+    - 0.0 = Indiferent.
+    - Valor Base: 0.3
 
 11. Centres mèdics i salut:
-    - Proximitat a hospitals.
-    - Per les persones amb condicions mèdiques específiques, aquest valor ha de ser alt (0.8-1.0).
-    - Per a persones grans, el valor ha de ser moderadament alt (0.5-0.7).
-    - Valor Base (Mínim): 0.1
+    - 1.0 = Malalties cròniques o edat avançada.
+    - Valor Base: 0.1
 
-INSTRUCCIONS DE CÀLCUL:
-1. Comença amb el "Valor Base" per a cada aspecte.
-2. Analitza el text de l'usuari. Si l'usuari menciona explícitament una necessitat, augmenta significativament el valor (fins a 0.9 o 1.0).
-3. Si la necessitat és implícita pel seu perfil (ex: "sóc estudiant" implica necessitat de preu baix i bon internet), augmenta moderadament el valor (+0.3 a +0.5).
-4. Mai baixis del Valor Base.
-5. El valor màxim és 1.0.
-
-INSTRUCCIONS DE FORMAT DE SORTIDA (STRICT):
-- La teva resposta ha de contenir ÚNICAMENT l'array JSON.
+INSTRUCCIONS FINALS:
 - NO escriguis cap explicació.
 - NO utilitzis blocs de codi markdown (```json).
 - NO escriguis text introductori.
@@ -860,6 +886,208 @@ mobility_info = load_mobility_data()
 education_info = load_education_data()
 health_info = load_health_data()
 community_vibe_info = load_community_vibe_data()
+
+def calculate_similarity(vector1, vector2, method='cosine'):
+    """
+    Calcula la similitud entre dos vectores usando diferentes métodos.
+    
+    Args:
+        vector1: Vector de preferencias del usuario
+        vector2: Vector de características de la celda
+        method: 'cosine' para similitud coseno o 'ml' para Maximum Likelihood
+    
+    Retorna un valor entre 0 (totalmente diferentes) y 1 (idénticos).
+    """
+    try:
+        v1 = np.array(vector1, dtype=float)
+        v2 = np.array(vector2, dtype=float)
+        
+        if method == 'cosine':
+            # Similitud coseno
+            dot_product = np.dot(v1, v2)
+            norm_v1 = np.linalg.norm(v1)
+            norm_v2 = np.linalg.norm(v2)
+            
+            if norm_v1 == 0 or norm_v2 == 0:
+                return 0.0
+            
+            similarity = dot_product / (norm_v1 * norm_v2)
+            similarity = max(0.0, min(1.0, similarity))
+            
+        elif method == 'ml':
+            # Maximum Likelihood - usando distribución gaussiana
+            # Calculamos la probabilidad de que v2 sea generado por una distribución
+            # centrada en v1
+            
+            # Diferencia entre vectores
+            diff = v1 - v2
+            
+            # Distancia euclidiana
+            euclidean_distance = np.linalg.norm(diff)
+            
+            # La distancia máxima posible entre dos vectores [0,1]^11 es sqrt(11)
+            max_distance = np.sqrt(11)
+            
+            # Convertir distancia a similitud (1 - distancia_normalizada)
+            # Cuando distancia = 0, similitud = 1
+            # Cuando distancia = max_distance, similitud = 0
+            similarity = 1.0 - (euclidean_distance / max_distance)
+            
+            # Aplicar una transformación gaussiana para suavizar
+            # Esto da más peso a las similitudes altas
+            sigma = 0.3  # Controla la "suavidad" de la curva
+            similarity = np.exp(-((1 - similarity) ** 2) / (2 * sigma ** 2))
+            
+            # Asegurar que está en el rango [0, 1]
+            similarity = max(0.0, min(1.0, similarity))
+            
+        elif method == 'manhattan':
+            # Manhattan Distance (L1)
+            # Suma de diferencias absolutas
+            manhattan_distance = np.sum(np.abs(v1 - v2))
+            
+            # La distancia máxima posible es 11 (cada componente puede diferir en 1)
+            max_distance = 11.0
+            
+            # Convertir a similitud
+            similarity = 1.0 - (manhattan_distance / max_distance)
+            similarity = max(0.0, min(1.0, similarity))
+            
+        elif method == 'weighted':
+            # Weighted Euclidean Distance
+            # Pesos para cada dimensión (ajustables según importancia)
+            weights = np.array([
+                1.2,  # 0: income (más peso)
+                1.5,  # 1: crimes (MUY importante - más peso)
+                1.0,  # 2: connectivity
+                1.0,  # 3: noise
+                0.8,  # 4: walkability
+                1.3,  # 5: accessibility (importante)
+                0.9,  # 6: wellbeing
+                0.9,  # 7: mobility
+                1.1,  # 8: education
+                0.8,  # 9: community_vibe
+                1.2   # 10: health (importante)
+            ])
+            
+            # Calcular distancia ponderada
+            diff = v1 - v2
+            weighted_distance = np.sqrt(np.sum(weights * (diff ** 2)))
+            
+            # Normalizar por la máxima distancia ponderada posible
+            max_distance = np.sqrt(np.sum(weights))
+            
+            # Convertir a similitud
+            similarity = 1.0 - (weighted_distance / max_distance)
+            
+            # Aplicar transformación suave
+            similarity = np.exp(-((1 - similarity) ** 2) / 0.2)
+            similarity = max(0.0, min(1.0, similarity))
+            
+        elif method == 'pearson':
+            # Pearson Correlation Coefficient
+            # Mide correlación lineal entre vectores
+            
+            # Evitar división por cero
+            if np.std(v1) == 0 or np.std(v2) == 0:
+                return 0.0
+            
+            # Calcular correlación de Pearson
+            correlation = np.corrcoef(v1, v2)[0, 1]
+            
+            # Manejar NaN (puede ocurrir con vectores constantes)
+            if np.isnan(correlation):
+                return 0.0
+            
+            # Convertir de [-1, 1] a [0, 1]
+            # correlation = -1 (totalmente opuestos) -> similarity = 0
+            # correlation = 0 (sin correlación) -> similarity = 0.5
+            # correlation = 1 (idénticos) -> similarity = 1
+            similarity = (correlation + 1) / 2
+            similarity = max(0.0, min(1.0, similarity))
+            
+        else:
+            # Método por defecto: coseno
+            return calculate_similarity(vector1, vector2, 'cosine')
+        
+        return float(similarity)
+        
+    except Exception as e:
+        print(f"Error calculando similitud: {e}")
+        return 0.0
+
+def generate_heatmap(method='cosine'):
+    """
+    Genera un mapa de calor comparando user_preference_vector con cada celda de la matriz.
+    
+    Args:
+        method: 'cosine' para similitud coseno o 'ml' para Maximum Likelihood
+    
+    Retorna una matriz 20x20 con valores de similitud entre 0 y 1.
+    """
+    global user_preference_vector
+    
+    if not user_preference_vector or len(user_preference_vector) != 11:
+        return None
+    
+    heatmap = [[0.0 for _ in range(20)] for _ in range(20)]
+    
+    for i in range(20):
+        for j in range(20):
+            cell_vector = matrix_LA_alldata_20x20[i][j]
+            similarity = calculate_similarity(user_preference_vector, cell_vector, method)
+            heatmap[i][j] = similarity
+    
+    return heatmap
+
+@app.route('/api/heatmap', methods=['GET'])
+def get_heatmap():
+    """
+    Endpoint que retorna el mapa de calor basado en las preferencias del usuario.
+    
+    Query params:
+        method: 'cosine' (default) o 'ml' para Maximum Likelihood
+    """
+    global user_preference_vector
+    
+    if not user_preference_vector:
+        return jsonify({
+            'error': 'No hay vector de preferencias. Primero genera un vector usando /api/generate'
+        }), 400
+    
+    # Obtener método desde query params
+    method = request.args.get('method', 'cosine')
+    if method not in ['cosine', 'ml', 'manhattan', 'weighted', 'pearson']:
+        method = 'cosine'
+    
+    heatmap = generate_heatmap(method)
+    
+    if heatmap is None:
+        return jsonify({
+            'error': 'Error generando mapa de calor'
+        }), 500
+    
+    # Encontrar el valor máximo y mínimo para normalización si es necesario
+    flat_values = [val for row in heatmap for val in row]
+    max_similarity = max(flat_values) if flat_values else 1.0
+    min_similarity = min(flat_values) if flat_values else 0.0
+    
+    return jsonify({
+        'heatmap': heatmap,
+        'user_vector': user_preference_vector,
+        'method': method,
+        'stats': {
+            'max_similarity': max_similarity,
+            'min_similarity': min_similarity,
+            'mean_similarity': sum(flat_values) / len(flat_values) if flat_values else 0.0
+        },
+        'rectangle': {
+            'north': 34.3344,
+            'east': -118.1236,
+            'south': 33.8624,
+            'west': -118.6057
+        }
+    })
 
 @app.route('/api/osm-data')
 def get_osm_data():

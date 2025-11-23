@@ -110,6 +110,53 @@
         <button @click="toggleHealthLayer" class="toggle-btn" :class="{ 'active': showHealthLayer }">
           {{ showHealthLayer ? 'Ocultar' : 'Mostrar' }} Health
         </button>
+        <button @click="toggleHeatmapLayer" class="toggle-btn heatmap-btn" :class="{ 'active': showHeatmapLayer }">
+          {{ showHeatmapLayer ? 'Ocultar' : 'Mostrar' }} Mapa de Calor
+        </button>
+      </div>
+    </div>
+    
+    <!-- Selector de método de cálculo abajo a la derecha -->
+    <div id="method-selector">
+      <button @click="showMethodMenu = !showMethodMenu" class="method-toggle-btn">
+        Método: {{ getMethodName(calculationMethod) }} {{ showMethodMenu ? '▲' : '▼' }}
+      </button>
+      <div v-show="showMethodMenu" class="method-menu">
+        <button 
+          @click="selectMethod('cosine')" 
+          class="method-btn" 
+          :class="{ 'active': calculationMethod === 'cosine' }"
+        >
+          📐 Similitud Coseno
+        </button>
+        <button 
+          @click="selectMethod('ml')" 
+          class="method-btn" 
+          :class="{ 'active': calculationMethod === 'ml' }"
+        >
+          🎯 Maximum Likelihood
+        </button>
+        <button 
+          @click="selectMethod('manhattan')" 
+          class="method-btn" 
+          :class="{ 'active': calculationMethod === 'manhattan' }"
+        >
+          🏙️ Manhattan Distance
+        </button>
+        <button 
+          @click="selectMethod('weighted')" 
+          class="method-btn" 
+          :class="{ 'active': calculationMethod === 'weighted' }"
+        >
+          ⚖️ Weighted Euclidean
+        </button>
+        <button 
+          @click="selectMethod('pearson')" 
+          class="method-btn" 
+          :class="{ 'active': calculationMethod === 'pearson' }"
+        >
+          📊 Pearson Correlation
+        </button>
       </div>
     </div>
   </div>
@@ -175,7 +222,14 @@ export default {
       showHealthLayer: false,
       communityVibeRectangles: [],
       showCommunityVibeLayer: false,
+      showFiltersMenu: false,
+      showFiltersMenu: false,
+      heatmapRectangles: [],
+      showHeatmapLayer: false,
+      calculationMethod: 'cosine',
+      showMethodMenu: false,
       showFiltersMenu: false
+
     };
   },
   computed: {
@@ -267,11 +321,15 @@ export default {
 
         this.aiOutput = response.data.output;
         
+        // Cargar el mapa de calor automáticamente después de generar el vector
+        if (response.data.vector && response.data.vector.length === 11 && Array.isArray(response.data.vector) {
+          
         // Guardar el vector de preferències
-        if (response.data.vector && Array.isArray(response.data.vector)) {
           this.preferenceVector = response.data.vector;
+          await this.loadHeatmap();
         } else {
           this.error = 'No s\'ha rebut un vector vàlid de la IA';
+
         }
       } catch (err) {
         this.error = err.response?.data?.error || 'An error occurred while generating output';
@@ -285,6 +343,11 @@ export default {
       this.aiOutput = '';
       this.preferenceVector = [];
       this.error = '';
+      
+      // Limpiar el mapa de calor
+      this.heatmapRectangles.forEach(rect => rect.remove());
+      this.heatmapRectangles = [];
+      this.showHeatmapLayer = false;
     },
     toggleCrimeLayer() {
       this.showCrimeLayer = !this.showCrimeLayer;
@@ -416,6 +479,144 @@ export default {
           rect.remove();
         }
       });
+    },
+    
+    toggleHeatmapLayer() {
+      this.showHeatmapLayer = !this.showHeatmapLayer;
+      
+      this.heatmapRectangles.forEach(rect => {
+        if (this.showHeatmapLayer) {
+          rect.addTo(this.map);
+        } else {
+          rect.remove();
+        }
+      });
+    },
+    
+    async loadHeatmap() {
+      try {
+        const response = await axios.get(`http://localhost:5000/api/heatmap?method=${this.calculationMethod}`);
+        const { heatmap, rectangle, stats, method } = response.data;
+        
+        console.log(`Heatmap stats (${method}):`, stats);
+        
+        this.drawHeatmapGrid(heatmap, rectangle);
+      } catch (err) {
+        console.error('Error loading heatmap:', err);
+        this.error = 'Error cargando el mapa de calor';
+      }
+    },
+    
+    async selectMethod(method) {
+      this.calculationMethod = method;
+      this.showMethodMenu = false;
+      
+      // Recargar el mapa de calor con el nuevo método si ya hay un vector
+      if (this.heatmapRectangles.length > 0) {
+        await this.loadHeatmap();
+      }
+    },
+    
+    getMethodName(method) {
+      const names = {
+        'cosine': 'Coseno',
+        'ml': 'ML',
+        'manhattan': 'Manhattan',
+        'weighted': 'Weighted',
+        'pearson': 'Pearson'
+      };
+      return names[method] || 'Coseno';
+    },
+    
+    getHeatmapColor(similarity) {
+      // Gradiente de color basado en similitud (0-1)
+      // 0 = Azul (frío, no coincide)
+      // 0.5 = Verde/Amarillo (medio)
+      // 1 = Rojo (caliente, muy coincidente)
+      
+      // No mostrar si la similitud es muy baja (menos del 30%)
+      if (similarity < 0.3) return null;
+      
+      let color;
+      let opacity;
+      
+      if (similarity < 0.4) {
+        // Azul (baja coincidencia)
+        color = 'rgb(0, 100, 255)';
+        opacity = 0.4;
+      } else if (similarity < 0.5) {
+        // Cyan
+        color = 'rgb(0, 200, 255)';
+        opacity = 0.5;
+      } else if (similarity < 0.6) {
+        // Verde
+        color = 'rgb(0, 255, 100)';
+        opacity = 0.6;
+      } else if (similarity < 0.7) {
+        // Amarillo-Verde
+        color = 'rgb(150, 255, 0)';
+        opacity = 0.7;
+      } else if (similarity < 0.8) {
+        // Amarillo
+        color = 'rgb(255, 255, 0)';
+        opacity = 0.75;
+      } else if (similarity < 0.9) {
+        // Naranja
+        color = 'rgb(255, 150, 0)';
+        opacity = 0.85;
+      } else {
+        // Rojo (alta coincidencia)
+        color = 'rgb(255, 0, 0)';
+        opacity = 0.9;
+      }
+      
+      return { color, opacity };
+    },
+    
+    drawHeatmapGrid(heatmap, rectangle) {
+      // Limpiar rectángulos anteriores
+      this.heatmapRectangles.forEach(rect => rect.remove());
+      this.heatmapRectangles = [];
+      
+      const { north, south, west, east } = rectangle;
+      const verticalStep = (north - south) / 20;
+      const horizontalStep = (east - west) / 20;
+      
+      for (let i = 0; i < 20; i++) {
+        for (let j = 0; j < 20; j++) {
+          const similarity = heatmap[i][j];
+          
+          const colorData = this.getHeatmapColor(similarity);
+          if (!colorData) continue;
+          
+          const cellNorth = north - (i * verticalStep);
+          const cellSouth = cellNorth - verticalStep;
+          const cellWest = west + (j * horizontalStep);
+          const cellEast = cellWest + horizontalStep;
+          
+          const bounds = [[cellNorth, cellWest], [cellSouth, cellEast]];
+          
+          const rectangle = L.rectangle(bounds, {
+            color: colorData.color,
+            fillColor: colorData.color,
+            weight: 1,
+            fillOpacity: colorData.opacity
+          });
+          
+          rectangle.bindPopup(`
+            <strong>Coincidencia:</strong> ${(similarity * 100).toFixed(1)}%<br>
+            <strong>Posición:</strong> [${i}, ${j}]
+          `);
+          
+          this.heatmapRectangles.push(rectangle);
+          
+          if (this.showHeatmapLayer) {
+            rectangle.addTo(this.map);
+          }
+        }
+      }
+      
+      console.log(`Heatmap dibujado: ${this.heatmapRectangles.length} celdas`);
     },
     
     getCrimeColor(crimeValue) {
@@ -1809,5 +2010,103 @@ export default {
 .toggle-btn.active:hover {
   background-color: #45a049;
   box-shadow: 0 5px 10px rgba(76, 175, 80, 0.5);
+}
+
+.toggle-btn.heatmap-btn {
+  background: linear-gradient(90deg, rgb(0, 100, 255) 0%, rgb(0, 255, 100) 50%, rgb(255, 0, 0) 100%);
+  color: white;
+  font-weight: bold;
+  border: 3px solid #333;
+}
+
+.toggle-btn.heatmap-btn:hover {
+  box-shadow: 0 5px 15px rgba(255, 0, 0, 0.5);
+}
+
+.toggle-btn.heatmap-btn.active {
+  border-color: #FFD700;
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.7);
+}
+
+/* Selector de método de cálculo abajo a la derecha */
+#method-selector {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.method-toggle-btn {
+  background-color: #673AB7;
+  color: white;
+  border: 2px solid #512DA8;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(103, 58, 183, 0.4);
+  transition: all 0.3s ease;
+  min-width: 180px;
+  text-align: center;
+}
+
+.method-toggle-btn:hover {
+  background-color: #512DA8;
+  box-shadow: 0 5px 10px rgba(103, 58, 183, 0.5);
+}
+
+.method-toggle-btn:active {
+  transform: scale(0.98);
+}
+
+.method-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.method-btn {
+  background-color: #f0f0f0;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 10px 15px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+  min-width: 180px;
+  color: #666;
+  text-align: left;
+}
+
+.method-btn:hover {
+  background-color: #e0e0e0;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.method-btn:active {
+  transform: scale(0.98);
+}
+
+.method-btn.active {
+  background-color: #673AB7;
+  color: white;
+  border-color: #512DA8;
+  box-shadow: 0 3px 6px rgba(103, 58, 183, 0.4);
+}
+
+.method-btn.active:hover {
+  background-color: #512DA8;
+  box-shadow: 0 5px 10px rgba(103, 58, 183, 0.5);
 }
 </style>
