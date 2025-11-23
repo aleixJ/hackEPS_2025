@@ -6,9 +6,9 @@ from pathlib import Path
 app = Flask(__name__)
 CORS(app)
 
-# Crear matriz 20x20 donde cada celda contiene un vector [income, crimes, connectivity, noise, walkability, 0, wellbeing, ...]
-# Formato de cada celda: [income, crimes, connectivity, noise, walkability, 0, wellbeing, 0, 0, 0]
-matrix_LA_alldata_20x20 = [[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for _ in range(20)] for _ in range(20)]
+# Crear matriz 20x20 donde cada celda contiene un vector [income, crimes, connectivity, noise, walkability, accessibility, wellbeing, ...]
+# Formato de cada celda: [income, crimes, connectivity, noise, walkability, accessibility, wellbeing, 0, 0, 0, community_vibe]
+matrix_LA_alldata_20x20 = [[[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for _ in range(20)] for _ in range(20)]
 
 def load_crime_data():
     """
@@ -219,6 +219,64 @@ def load_noise_data():
         print(f"Error al cargar datos de noise: {e}")
         return {'success': False, 'error': str(e)}
 
+def load_accessibility_data():
+    """
+    Carga el JSON de accessibility y llena el índice 5 de la matriz unificada.
+    Cada celda contendrá el valor de accessibility en el índice 5 del vector.
+    """
+    # Buscar el archivo más reciente de accessibility
+    json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
+    accessibility_files = list(json_dir.glob('accessibility_matrix_20x20_*.json'))
+    
+    if not accessibility_files:
+        print("Error: No se encontró ningún archivo de accessibility")
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    
+    # Usar el archivo más reciente
+    json_path = sorted(accessibility_files)[-1]
+    print(f"Cargando accessibility desde: {json_path}")
+    
+    try:
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        accessibility_data = data[0]
+        accessibility_matrix = accessibility_data['AccessibilityMatrix']
+        
+        # Verificar dimensiones
+        rows = len(accessibility_matrix)
+        cols = len(accessibility_matrix[0]) if rows > 0 else 0
+        
+        # Llenar la matriz unificada - índice 5 = accessibility
+        for i in range(20):
+            for j in range(20):
+                if i < rows and j < cols:
+                    matrix_LA_alldata_20x20[i][j][5] = accessibility_matrix[i][j]
+        
+        return {
+            'success': True,
+            'origin': {
+                'north': accessibility_data['Norigin'],
+                'west': accessibility_data['WOrigin']
+            },
+            'steps': {
+                'vertical': accessibility_data['VerticalStep'],
+                'horizontal': accessibility_data['HorizontalStep']
+            },
+            'dimensions': {
+                'rows': rows,
+                'cols': cols
+            },
+            'max_score': accessibility_data.get('MaxScore', 1.0)
+        }
+    
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo {json_path}")
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    except Exception as e:
+        print(f"Error al cargar datos de accessibility: {e}")
+        return {'success': False, 'error': str(e)}
+
 def load_wellbeing_data():
     """
     Carga el JSON de wellbeing y llena el índice 6 de la matriz unificada.
@@ -275,6 +333,209 @@ def load_wellbeing_data():
         return {'success': False, 'error': 'Archivo no encontrado'}
     except Exception as e:
         print(f"Error al cargar datos de wellbeing: {e}")
+        return {'success': False, 'error': str(e)}
+
+def load_mobility_data():
+    """
+    Carga el JSON de mobility y llena el índice 7 de la matriz unificada.
+    Cada celda contendrá el valor de mobility en el índice 7 del vector.
+    """
+    # Buscar el archivo mobility
+    json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
+    mobility_files = list(json_dir.glob('mobility*.json'))
+    
+    if not mobility_files:
+        return {'success': False, 'error': 'Archivo mobility no encontrado'}
+    
+    # Usar el archivo más reciente
+    json_path = sorted(mobility_files)[-1]
+    print(f"Cargando mobility desde: {json_path}")
+    
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        mobility_matrix = data[0]['MobilityMatrix']
+        vertical_step = data[0]['VerticalStep']
+        horizontal_step = data[0]['HorizontalStep']
+        
+        # Llenar el índice 7 de la matriz unificada
+        for i in range(20):
+            for j in range(20):
+                matrix_LA_alldata_20x20[i][j][7] = mobility_matrix[i][j]
+        
+        print("✓ Datos de mobility cargados correctamente en índice 7")
+        return {
+            'success': True,
+            'origin': f"N:{data[0]['Norigin']}, W:{data[0]['WOrigin']}",
+            'steps': f"Vertical:{vertical_step}, Horizontal:{horizontal_step}",
+            'dimensions': '20x20',
+            'max_score': data[0].get('MaxScore', 'N/A')
+        }
+    
+    except FileNotFoundError:
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+def load_education_data():
+    """
+    Carga el JSON de education y llena el índice 8 de la matriz unificada.
+    Cada celda contendrá el valor de education en el índice 8 del vector.
+    """
+    # Buscar el archivo education
+    json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
+    education_files = list(json_dir.glob('education_matrix_*.json'))
+    
+    if not education_files:
+        return {'success': False, 'error': 'Archivo education no encontrado'}
+    
+    # Usar el archivo más reciente
+    json_path = sorted(education_files)[-1]
+    print(f"Cargando education desde: {json_path}")
+    
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # El archivo usa 'CrimeMatrix' en lugar de 'EducationMatrix'
+        education_matrix = data[0].get('EducationMatrix') or data[0].get('CrimeMatrix')
+        vertical_step = data[0]['VerticalStep']
+        horizontal_step = data[0]['HorizontalStep']
+        
+        # Llenar el índice 8 de la matriz unificada
+        for i in range(20):
+            for j in range(20):
+                matrix_LA_alldata_20x20[i][j][8] = education_matrix[i][j]
+        
+        print("✓ Datos de education cargados correctamente en índice 8")
+        return {
+            'success': True,
+            'origin': f"N:{data[0]['Norigin']}, W:{data[0]['WOrigin']}",
+            'steps': f"Vertical:{vertical_step}, Horizontal:{horizontal_step}",
+            'dimensions': '20x20',
+            'max_score': data[0].get('MaxScore', 'N/A')
+        }
+    
+    except FileNotFoundError:
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+def load_health_data():
+    """
+    Carga el JSON de health y llena el índice 10 de la matriz unificada.
+    Cada celda contendrá el valor de health en el índice 10 del vector.
+    """
+    # Buscar el archivo más reciente de health
+    json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
+    health_files = list(json_dir.glob('health_matrix_20x20_*.json'))
+    
+    if not health_files:
+        print("Error: No se encontró ningún archivo de health")
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    
+    # Usar el archivo más reciente
+    json_path = sorted(health_files)[-1]
+    print(f"Cargando health desde: {json_path}")
+    
+    try:
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        health_data = data[0]
+        health_matrix = health_data['HealthMatrix']
+        
+        # Verificar dimensiones
+        rows = len(health_matrix)
+        cols = len(health_matrix[0]) if rows > 0 else 0
+        
+        # Llenar la matriz unificada - índice 10 = health
+        for i in range(20):
+            for j in range(20):
+                if i < rows and j < cols:
+                    matrix_LA_alldata_20x20[i][j][10] = health_matrix[i][j]
+        
+        return {
+            'success': True,
+            'origin': {
+                'north': health_data.get('Norigin', 0),
+                'west': health_data.get('WOrigin', 0)
+            },
+            'steps': {
+                'vertical': health_data.get('VerticalStep', 0),
+                'horizontal': health_data.get('HorizontalStep', 0)
+            },
+            'dimensions': {
+                'rows': rows,
+                'cols': cols
+            },
+            'max_score': health_data.get('MaxScore', 1.0)
+        }
+    
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo {json_path}")
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    except Exception as e:
+        print(f"Error al cargar datos de health: {e}")
+        return {'success': False, 'error': str(e)}
+
+def load_community_vibe_data():
+    """
+    Carga el JSON de community vibe y llena el índice 10 de la matriz unificada.
+    Cada celda contendrá el valor de community vibe en el índice 10 del vector.
+    """
+    # Buscar el archivo más reciente de community_vibe
+    json_dir = Path(__file__).parent / 'city_stats' / 'jsons'
+    community_vibe_files = list(json_dir.glob('community_vibe_matrix_20x20_*.json'))
+    
+    if not community_vibe_files:
+        print("Error: No se encontró ningún archivo de community_vibe")
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    
+    # Usar el archivo más reciente
+    json_path = sorted(community_vibe_files)[-1]
+    print(f"Cargando community_vibe desde: {json_path}")
+    
+    try:
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        
+        community_vibe_data = data[0]
+        community_vibe_matrix = community_vibe_data['CommunityVibMatrix']
+        
+        # Verificar dimensiones
+        rows = len(community_vibe_matrix)
+        cols = len(community_vibe_matrix[0]) if rows > 0 else 0
+        
+        # Llenar la matriz unificada - índice 9 = community_vibe
+        for i in range(20):
+            for j in range(20):
+                if i < rows and j < cols:
+                    matrix_LA_alldata_20x20[i][j][9] = community_vibe_matrix[i][j]
+        
+        return {
+            'success': True,
+            'origin': {
+                'north': community_vibe_data.get('Norigin', 0),
+                'west': community_vibe_data.get('WOrigin', 0)
+            },
+            'steps': {
+                'vertical': community_vibe_data.get('VerticalStep', 0),
+                'horizontal': community_vibe_data.get('HorizontalStep', 0)
+            },
+            'dimensions': {
+                'rows': rows,
+                'cols': cols
+            },
+            'max_score': max(max(row) for row in community_vibe_matrix) if rows > 0 and cols > 0 else 1.0
+        }
+    
+    except FileNotFoundError:
+        print(f"Error: No se encontró el archivo {json_path}")
+        return {'success': False, 'error': 'Archivo no encontrado'}
+    except Exception as e:
+        print(f"Error al cargar datos de community_vibe: {e}")
         return {'success': False, 'error': str(e)}
 
 def load_walkability_data():
@@ -336,24 +597,34 @@ def load_walkability_data():
         return {'success': False, 'error': str(e)}
 
 # Cargar datos al iniciar el servidor
-# El orden importa: primero income (índice 0), luego crime (índice 1), luego connectivity (índice 2), luego noise (índice 3), luego walkability (índice 4), índice 5 reservado, luego wellbeing (índice 6)
+# Cargar datos en orden: income(0), crime(1), connectivity(2), noise(3), walkability(4), accessibility(5), wellbeing(6), mobility(7), education(8), community_vibe(9), health(10)
 income_info = load_income_data()
-crime_info = load_crime_data()
+crimes_info = load_crime_data()
 connectivity_info = load_connectivity_data()
 noise_info = load_noise_data()
 walkability_info = load_walkability_data()
+accessibility_info = load_accessibility_data()
 wellbeing_info = load_wellbeing_data()
+mobility_info = load_mobility_data()
+education_info = load_education_data()
+health_info = load_health_data()
+community_vibe_info = load_community_vibe_data()
 
 @app.route('/api/osm-data')
 def get_osm_data():
     # Información sobre los datos cargados
     data_info = {
         'income': income_info,
-        'crime': crime_info,
+        'crimes': crimes_info,
         'connectivity': connectivity_info,
         'noise': noise_info,
         'walkability': walkability_info,
-        'wellbeing': wellbeing_info
+        'accessibility': accessibility_info,
+        'wellbeing': wellbeing_info,
+        'mobility': mobility_info,
+        'education': education_info,
+        'health': health_info,
+        'community_vibe': community_vibe_info
     }
     
     return jsonify({
@@ -367,15 +638,19 @@ def get_osm_data():
         'matrix_LA_alldata_20x20': matrix_LA_alldata_20x20,
         'data_info': data_info,
         'vector_format': {
-            'description': 'Cada celda es un vector [income, crimes, connectivity, noise, walkability, 0, wellbeing]',
+            'description': 'Cada celda es un vector [income, crimes, connectivity, noise, walkability, accessibility, wellbeing, mobility, education, community_vibe, health]',
             'indices': {
                 '0': 'income (0-1)',
                 '1': 'crimes (0-1)',
                 '2': 'connectivity (0-1)',
                 '3': 'noise (0-1)',
                 '4': 'walkability (0-1)',
-                '5': 'reserved',
-                '6': 'wellbeing (0-1)'
+                '5': 'accessibility (0-1)',
+                '6': 'wellbeing (0-1)',
+                '7': 'mobility (0-1)',
+                '8': 'education (0-1)',
+                '9': 'community_vibe (0-1)',
+                '10': 'health (0-1)'
             }
         }
     })
