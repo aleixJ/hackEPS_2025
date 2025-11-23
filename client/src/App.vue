@@ -1,19 +1,17 @@
 <template>
   <div id="app">
-
-    <div class="container">
-      <header>
-        <h1>AI Prompt Generator</h1>
-        <p class="subtitle">Enter your prompt and get AI-generated responses</p>
-      </header>
-
-      <main>
+    <!-- Mapa como fondo -->
+    <div id="map"></div>
+    
+    <!-- Panel de prompt superpuesto a la izquierda -->
+    <div class="prompt-panel">
+      <div class="prompt-container">
+        <h2>AI Assistant</h2>
+        
         <div class="input-section">
-          <label for="prompt-input">Your Prompt</label>
           <textarea
-            id="prompt-input"
             v-model="userPrompt"
-            placeholder="Enter your prompt here..."
+            placeholder="Describe tu zona ideal en Los Ángeles..."
             rows="5"
             :disabled="loading"
           ></textarea>
@@ -25,15 +23,15 @@
             :disabled="loading || !userPrompt.trim()"
             class="btn btn-primary"
           >
-            <span v-if="loading">Generating...</span>
-            <span v-else>Generate</span>
+            <span v-if="loading">Generando...</span>
+            <span v-else>Generar</span>
           </button>
           <button 
             @click="refresh" 
             :disabled="loading"
             class="btn btn-secondary"
           >
-            Refresh
+            Limpiar
           </button>
         </div>
 
@@ -42,33 +40,34 @@
         </div>
 
         <div v-if="aiOutput" class="output-section">
-          <label>AI Output</label>
+          <label>Resultado</label>
           <div class="output-content">
             {{ aiOutput }}
           </div>
         </div>
-      </main>
-     <!-- A partir de aqui empieza el fichero de mapa -->
-    <div id="map"></div>
+      </div>
+    </div>
+    
+    <!-- Controles de filtros a la derecha -->
     <div id="controls">
       <button @click="showFiltersMenu = !showFiltersMenu" class="filters-toggle-btn">
         Filtros {{ showFiltersMenu ? '▲' : '▼' }}
       </button>
       <div v-show="showFiltersMenu" class="filters-menu">
         <button @click="toggleCrimeLayer" class="toggle-btn" :class="{ 'active': showCrimeLayer }">
-          {{ showCrimeLayer ? 'Ocultar' : 'Mostrar' }} Índice de Criminalidad
+          {{ showCrimeLayer ? 'Ocultar' : 'Mostrar' }} Criminalidad
         </button>
         <button @click="toggleConnectivityLayer" class="toggle-btn" :class="{ 'active': showConnectivityLayer }">
           {{ showConnectivityLayer ? 'Ocultar' : 'Mostrar' }} Conectividad
         </button>
         <button @click="toggleIncomeLayer" class="toggle-btn" :class="{ 'active': showIncomeLayer }">
-          {{ showIncomeLayer ? 'Ocultar' : 'Mostrar' }} Nivel de Ingresos
+          {{ showIncomeLayer ? 'Ocultar' : 'Mostrar' }} Ingresos
         </button>
         <button @click="toggleNoiseLayer" class="toggle-btn" :class="{ 'active': showNoiseLayer }">
-          {{ showNoiseLayer ? 'Ocultar' : 'Mostrar' }} Nivel de Ruido
+          {{ showNoiseLayer ? 'Ocultar' : 'Mostrar' }} Ruido
         </button>
         <button @click="toggleWalkabilityLayer" class="toggle-btn" :class="{ 'active': showWalkabilityLayer }">
-          {{ showWalkabilityLayer ? 'Ocultar' : 'Mostrar' }} Walkability 15min
+          {{ showWalkabilityLayer ? 'Ocultar' : 'Mostrar' }} Walkability
         </button>
         <button @click="toggleAccessibilityLayer" class="toggle-btn" :class="{ 'active': showAccessibilityLayer }">
           {{ showAccessibilityLayer ? 'Ocultar' : 'Mostrar' }} Accesibilidad
@@ -89,12 +88,6 @@
           {{ showHealthLayer ? 'Ocultar' : 'Mostrar' }} Health
         </button>
       </div>
-
-      
-      
-      
-      
-      
     </div>
   </div>
 </template>
@@ -1146,6 +1139,129 @@ export default {
   width: 100%;
 }
 
+/* Panel de prompt superpuesto a la izquierda */
+.prompt-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20%;
+  height: 100vh;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.prompt-container {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin: 10px;
+}
+
+.prompt-container h2 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.input-section {
+  margin-bottom: 15px;
+}
+
+.input-section textarea {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.input-section textarea:focus {
+  outline: none;
+  border-color: #2196F3;
+}
+
+.input-section textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: #2196F3;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #1976D2;
+}
+
+.btn-secondary {
+  background-color: #666;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #555;
+}
+
+.error-message {
+  padding: 8px;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  font-size: 12px;
+}
+
+.output-section {
+  margin-top: 15px;
+}
+
+.output-section label {
+  display: block;
+  margin-bottom: 8px;
+  color: #333;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.output-content {
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Controles de filtros del mapa a la derecha */
 #controls {
   position: absolute;
   top: 10px;

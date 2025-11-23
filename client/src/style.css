@@ -1,66 +1,29 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
+/* Estilos específicos para el panel LLM */
+.prompt-panel .prompt-container {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
-  min-height: 100vh;
-  padding: 40px 20px;
 }
 
-#app {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 40px;
-}
-
-header {
-  text-align: center;
-  margin-bottom: 40px;
-}
-
-h1 {
+.prompt-panel h2 {
   color: #333;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 10px;
 }
 
-.subtitle {
-  color: #666;
-  font-size: 1rem;
-}
-
-main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.input-section,
-.output-section {
+.prompt-panel .input-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-label {
+.prompt-panel label {
   font-weight: 500;
   color: #333;
   font-size: 0.95rem;
 }
 
-textarea {
-  width: 100%;
+.prompt-panel textarea {
+  width: 90%;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -70,23 +33,23 @@ textarea {
   transition: border-color 0.2s;
 }
 
-textarea:focus {
+.prompt-panel textarea:focus {
   outline: none;
   border-color: #4a90e2;
 }
 
-textarea:disabled {
+.prompt-panel textarea:disabled {
   background-color: #f9f9f9;
   cursor: not-allowed;
 }
 
-.button-group {
+.prompt-panel .button-group {
   display: flex;
   gap: 12px;
   justify-content: center;
 }
 
-.btn {
+.prompt-panel .btn {
   padding: 12px 24px;
   font-size: 1rem;
   font-weight: 500;
@@ -96,30 +59,30 @@ textarea:disabled {
   transition: all 0.2s;
 }
 
-.btn:disabled {
+.prompt-panel .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.btn-primary {
+.prompt-panel .btn-primary {
   background: #4a90e2;
   color: white;
 }
 
-.btn-primary:hover:not(:disabled) {
+.prompt-panel .btn-primary:hover:not(:disabled) {
   background: #357abd;
 }
 
-.btn-secondary {
+.prompt-panel .btn-secondary {
   background: #e0e0e0;
   color: #333;
 }
 
-.btn-secondary:hover:not(:disabled) {
+.prompt-panel .btn-secondary:hover:not(:disabled) {
   background: #d0d0d0;
 }
 
-.output-content {
+.prompt-panel .output-content {
   background: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -131,7 +94,7 @@ textarea:disabled {
   line-height: 1.6;
 }
 
-.error-message {
+.prompt-panel .error-message {
   background: #ffebee;
   color: #c62828;
   padding: 12px;
@@ -141,19 +104,11 @@ textarea:disabled {
 }
 
 @media (max-width: 768px) {
-  .container {
-    padding: 24px;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .button-group {
+  .prompt-panel .button-group {
     flex-direction: column;
   }
 
-  .btn {
+  .prompt-panel .btn {
     width: 100%;
   }
 }

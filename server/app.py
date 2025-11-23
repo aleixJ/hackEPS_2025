@@ -21,8 +21,7 @@ Aquests són els 11 aspectes (índexs 0-10) i les seves regles de ponderació:
 
 2. Seguretat física i privacitat:
    - Important per a famílies, famosos o persones vulnerables.
-   - Com menys insegur = més alt el valor.
-   - Valor Base (Mínim): 0
+   - Com mes segur = més baix el valor (0).
 
 3. Connectivitat digital i entorn WFH (Teletreball):
    - Crucial per a "Nòmades digitals" o treballs tecnològics.
@@ -98,11 +97,16 @@ except Exception as e:
     print(f"✗ Error initializing Gemini API: {e}")
     gemini_api = None
 
+# Variable global para almacenar el vector de preferencias generado por la LLM
+user_preference_vector = []
+
 @app.route('/api/generate', methods=['POST'])
 def generate():
     """
     Endpoint to process user prompts and return AI-generated output using Google's Gemini API.
     """
+    global user_preference_vector
+    
     try:
         # Check if API is initialized
         if gemini_api is None:
@@ -141,8 +145,20 @@ def generate():
                 'error': f"API Error: {error_msg}"
             }), 500
         
+        # Parsear el vector de salida
+        try:
+            llm_output = result['text'].strip()
+            # Intentar parsear como JSON array
+            user_preference_vector = json.loads(llm_output)
+            print(f"✓ Vector de preferencias guardado: {user_preference_vector}")
+        except json.JSONDecodeError as e:
+            print(f"⚠ Error parseando vector JSON: {e}")
+            print(f"⚠ Output recibido: {llm_output}")
+            user_preference_vector = []
+        
         return jsonify({
             'output': result['text'],
+            'vector': user_preference_vector,
             'timestamp': time.time(),
             'model': 'gemini-2.5-flash'
         }), 200
