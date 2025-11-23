@@ -11,7 +11,7 @@
         <div class="input-section">
           <textarea
             v-model="userPrompt"
-            placeholder="Describe tu zona ideal en Los Ángeles..."
+            placeholder="Descriu la teva zona ideal a Los Ángeles..."
             rows="5"
             :disabled="loading"
           ></textarea>
@@ -39,10 +39,33 @@
           {{ error }}
         </div>
 
-        <div v-if="aiOutput" class="output-section">
-          <label>Resultado</label>
-          <div class="output-content">
-            {{ aiOutput }}
+        <div v-if="preferenceVector.length > 0" class="output-section">
+          <label>Preferències Analitzades</label>
+          
+          <!-- Gràfic Radar -->
+          <div class="chart-container">
+            <Radar :data="chartData" :options="chartOptions" />
+          </div>
+          
+          <!-- Controls per modificar valors -->
+          <div class="controls-container">
+            <h3>Ajusta les Preferències</h3>
+            <div class="slider-grid">
+              <div v-for="(aspect, index) in aspectNames" :key="index" class="slider-item">
+                <label>
+                  {{ aspect }}
+                  <span class="value-display">{{ (preferenceVector[index] * 100).toFixed(0) }}%</span>
+                </label>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  :value="preferenceVector[index] * 100"
+                  @input="updatePreference(index, $event.target.value)"
+                  class="slider"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -145,15 +168,35 @@ import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import osmtogeojson from 'osmtogeojson';
+import { Radar } from 'vue-chartjs';
+import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend } from 'chart.js'
+
+ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
 
 
 export default {
   name: 'App',
+  components: {
+    Radar
+  },
   data() {
     return {
-
       userPrompt: '',
       aiOutput: '',
+      preferenceVector: [],
+      aspectNames: [
+        'Viabilitat econòmica',
+        'Seguretat',
+        'Connectivitat WFH',
+        'Soroll baix',
+        'Walkability 15min',
+        'Accessibilitat',
+        'Espais verds/Pets',
+        'Mobilitat',
+        'Educació',
+        'Community Vibe',
+        'Centres de Salut'
+      ],
       loading: false,
       error: '',
       map: null,
@@ -184,10 +227,83 @@ export default {
       heatmapRectangles: [],
       showHeatmapLayer: false,
       calculationMethod: 'cosine',
-      showMethodMenu: false
+      showMethodMenu: false,
+      showFiltersMenu: false
+
     };
   },
+  computed: {
+    chartData() {
+      return {
+        labels: this.aspectNames,
+        datasets: [{
+          label: 'Preferències',
+          data: this.preferenceVector.map(v => v * 100),
+          backgroundColor: 'rgba(33, 150, 243, 0.2)',
+          borderColor: 'rgba(33, 150, 243, 1)',
+          borderWidth: 2,
+          pointBackgroundColor: 'rgba(33, 150, 243, 1)',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgba(33, 150, 243, 1)'
+        }]
+      }
+    },
+    chartOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          r: {
+            beginAtZero: true,
+            max: 100,
+            ticks: {
+              stepSize: 20,
+              font: {
+                size: 9
+              },
+              color: 'rgba(0, 0, 0, 0.4)',
+              backdropColor: 'transparent',
+              callback: function(value) {
+                return value + '%';
+              }
+            },
+            pointLabels: {
+              font: {
+                size: 10,
+                weight: '500'
+              },
+              color: '#333'
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.08)'
+            },
+            angleLines: {
+              color: 'rgba(0, 0, 0, 0.08)'
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.parsed.r.toFixed(0) + '%';
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   methods: {
+    updatePreference(index, value) {
+      this.preferenceVector[index] = parseFloat(value) / 100;
+      // Forçar actualització del gràfic
+      this.$forceUpdate();
+    },
     async generateOutput() {
       if (!this.userPrompt.trim()) {
         this.error = 'Please enter a prompt';
@@ -206,8 +322,14 @@ export default {
         this.aiOutput = response.data.output;
         
         // Cargar el mapa de calor automáticamente después de generar el vector
-        if (response.data.vector && response.data.vector.length === 11) {
+        if (response.data.vector && response.data.vector.length === 11 && Array.isArray(response.data.vector) {
+          
+        // Guardar el vector de preferències
+          this.preferenceVector = response.data.vector;
           await this.loadHeatmap();
+        } else {
+          this.error = 'No s\'ha rebut un vector vàlid de la IA';
+
         }
       } catch (err) {
         this.error = err.response?.data?.error || 'An error occurred while generating output';
@@ -219,6 +341,7 @@ export default {
     refresh() {
       this.userPrompt = '';
       this.aiOutput = '';
+      this.preferenceVector = [];
       this.error = '';
       
       // Limpiar el mapa de calor
@@ -1343,24 +1466,69 @@ export default {
   position: absolute;
   top: 0;
   left: 0;
-  width: 20%;
+  width: 28%;
+  max-width: 450px;
+  min-width: 320px;
   height: 100vh;
   z-index: 1000;
   overflow-y: auto;
 }
 
 .prompt-container {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.98);
   border-radius: 8px;
-  padding: 15px;
+  padding: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   margin: 10px;
 }
 
+/* Responsive design */
+@media (max-width: 1400px) {
+  .prompt-panel {
+    width: 35%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .prompt-panel {
+    width: 45%;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .prompt-panel {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 60vh;
+    position: relative;
+  }
+  
+  #map {
+    height: 40vh;
+    margin-top: 60vh;
+  }
+  
+  #controls {
+    top: calc(60vh + 10px);
+  }
+}
+
 .prompt-container h2 {
-  margin: 0 0 15px 0;
+  margin: 0 0 20px 0;
   color: #333;
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 2px solid #2196F3;
+  padding-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .prompt-container h2 {
+    font-size: 16px;
+  }
 }
 
 .input-section {
@@ -1369,18 +1537,27 @@ export default {
 
 .input-section textarea {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: 2px solid #ddd;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 13px;
   font-family: inherit;
   resize: vertical;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  min-height: 100px;
 }
 
 .input-section textarea:focus {
   outline: none;
   border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+@media (max-width: 768px) {
+  .input-section textarea {
+    font-size: 12px;
+    min-height: 80px;
+  }
 }
 
 .input-section textarea:disabled {
@@ -1396,18 +1573,20 @@ export default {
 
 .btn {
   flex: 1;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-primary {
@@ -1417,6 +1596,12 @@ export default {
 
 .btn-primary:hover:not(:disabled) {
   background-color: #1976D2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -1426,6 +1611,19 @@ export default {
 
 .btn-secondary:hover:not(:disabled) {
   background-color: #555;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 }
 
 .error-message {
@@ -1443,10 +1641,19 @@ export default {
 
 .output-section label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   color: #333;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 14px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+@media (max-width: 768px) {
+  .output-section label {
+    font-size: 13px;
+  }
 }
 
 .output-content {
@@ -1460,6 +1667,210 @@ export default {
   overflow-y: auto;
 }
 
+/* Gràfic i controls */
+.chart-container {
+  width: 100%;
+  max-width: 100%;
+  height: 280px;
+  margin: 15px auto;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-container canvas {
+  max-height: 260px !important;
+}
+
+@media (min-width: 1400px) {
+  .chart-container {
+    max-width: 100%;
+    height: 320px;
+  }
+  
+  .chart-container canvas {
+    max-height: 300px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    height: 240px;
+    padding: 8px;
+  }
+  
+  .chart-container canvas {
+    max-height: 220px !important;
+  }
+}
+
+.controls-container {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.controls-container h3 {
+  margin: 0 0 15px 0;
+  font-size: 15px;
+  color: #333;
+  text-align: center;
+  font-weight: 600;
+  position: sticky;
+  top: -15px;
+  background: #f8f9fa;
+  padding: 10px 0;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .controls-container {
+    max-height: 300px;
+  }
+  
+  .controls-container h3 {
+    font-size: 14px;
+  }
+}
+
+.slider-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.slider-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+  transition: box-shadow 0.2s ease;
+}
+
+.slider-item:hover {
+  box-shadow: 0 2px 6px rgba(33, 150, 243, 0.2);
+}
+
+.slider-item label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+@media (max-width: 768px) {
+  .slider-item label {
+    font-size: 11px;
+  }
+}
+
+.value-display {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 45px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+}
+
+@media (max-width: 768px) {
+  .value-display {
+    font-size: 10px;
+    padding: 3px 8px;
+    min-width: 40px;
+  }
+}
+
+.slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #e0e0e0 0%, #d3d3d3 100%);
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.slider:hover {
+  background: linear-gradient(to right, #bbdefb 0%, #90caf9 100%);
+}
+
+@media (max-width: 768px) {
+  .slider {
+    height: 10px;
+  }
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(33, 150, 243, 0.4);
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  cursor: pointer;
+  box-shadow: 0 3px 6px rgba(33, 150, 243, 0.4);
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+  transform: scale(1.15);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.5);
+}
+
+.slider::-moz-range-thumb:hover {
+  background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+  transform: scale(1.15);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.5);
+}
+
+.slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+}
+
+.slider::-moz-range-thumb:active {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+  
+  .slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
+
 /* Controles de filtros del mapa a la derecha */
 #controls {
   position: absolute;
@@ -1469,6 +1880,29 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+@media (max-width: 768px) {
+  #controls {
+    position: fixed;
+    bottom: 10px;
+    top: auto;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .filters-menu {
+    max-height: 200px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  
+  .toggle-btn {
+    font-size: 11px;
+    padding: 8px 10px;
+    min-width: auto;
+  }
 }
 
 .filters-toggle-btn {
