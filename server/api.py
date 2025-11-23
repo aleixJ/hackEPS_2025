@@ -26,9 +26,9 @@ class GeminiAPI:
         # Configure the API
         genai.configure(api_key=self.api_key)
         
-        # Initialize the model (using gemini-2.5-flash - stable, fast model)
-        # Other good options: models/gemini-2.5-pro, models/gemini-2.0-flash
-        self.model = genai.GenerativeModel('models/gemini-2.5-flash')
+        # Initialize the model (using gemini-2.0-flash - stable, fast model)
+        # Other good options: models/gemini-2.5-flash, models/gemini-flash-latest
+        self.model = genai.GenerativeModel('models/gemini-2.0-flash')
     
     def generate_text(self, prompt: str, **kwargs) -> dict:
         """
@@ -47,18 +47,68 @@ class GeminiAPI:
                 'temperature': kwargs.get('temperature', 0.7),
                 'top_p': kwargs.get('top_p', 0.95),
                 'top_k': kwargs.get('top_k', 40),
-                'max_output_tokens': kwargs.get('max_output_tokens', 2048),
+                'max_output_tokens': int(kwargs.get('max_output_tokens', 2048)),
             }
+            
+            # Safety settings to avoid blocking content
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                },
+            ]
             
             # Generate content
             response = self.model.generate_content(
                 prompt,
-                generation_config=generation_config
+                generation_config=generation_config,
+                safety_settings=safety_settings
             )
             
+            # Robust text extraction
+            text_content = ""
+            try:
+                text_content = response.text
+            except ValueError:
+                # Handle cases where response.text fails (multipart or other issues)
+                if response.candidates and response.candidates[0].content.parts:
+                    text_content = "".join(part.text for part in response.candidates[0].content.parts)
+            
+            # Check if text is empty and why
+            if not text_content:
+                finish_reason = "UNKNOWN"
+                if response.candidates:
+                    finish_reason = response.candidates[0].finish_reason
+                    
+                print(f"DEBUG: Empty text content. Finish reason: {finish_reason}")
+                if response.prompt_feedback:
+                    print(f"DEBUG: Prompt feedback: {response.prompt_feedback}")
+                
+                # If finish_reason is MAX_TOKENS (2), it means we hit the limit.
+                # But if text is empty, it's strange. 
+                
+                if finish_reason != 1: # 1 is STOP
+                     return {
+                        'success': False,
+                        'error': f"Generation stopped. Finish reason: {finish_reason}",
+                        'text': None
+                    }
+
             return {
                 'success': True,
-                'text': response.text,
+                'text': text_content,
                 'candidates': len(response.candidates) if hasattr(response, 'candidates') else 1,
                 'prompt_feedback': response.prompt_feedback if hasattr(response, 'prompt_feedback') else None
             }
@@ -89,15 +139,42 @@ class GeminiAPI:
                 'max_output_tokens': kwargs.get('max_output_tokens', 2048),
             }
             
+            # Safety settings to avoid blocking content
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                },
+            ]
+            
             response = self.model.generate_content(
                 prompt,
                 generation_config=generation_config,
+                safety_settings=safety_settings,
                 stream=True
             )
             
             for chunk in response:
-                if hasattr(chunk, 'text'):
-                    yield chunk.text
+                try:
+                    text_chunk = chunk.text
+                    yield text_chunk
+                except ValueError:
+                    # Handle cases where chunk.text fails (multipart or other issues)
+                    if chunk.candidates and chunk.candidates[0].content.parts:
+                        for part in chunk.candidates[0].content.parts:
+                            yield part.text
                     
         except Exception as e:
             yield f"Error: {str(e)}"
@@ -124,11 +201,44 @@ class GeminiAPI:
             
             # Send the final message and get response
             final_message = messages[-1]['content'] if messages else ""
-            response = chat.send_message(final_message)
+            
+            # Safety settings to avoid blocking content
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                },
+            ]
+            
+            response = chat.send_message(
+                final_message,
+                safety_settings=safety_settings
+            )
+            
+            # Robust text extraction
+            text_content = ""
+            try:
+                text_content = response.text
+            except ValueError:
+                # Handle cases where response.text fails (multipart or other issues)
+                if response.candidates and response.candidates[0].content.parts:
+                    text_content = "".join(part.text for part in response.candidates[0].content.parts)
             
             return {
                 'success': True,
-                'text': response.text,
+                'text': text_content,
                 'history': chat.history
             }
             
